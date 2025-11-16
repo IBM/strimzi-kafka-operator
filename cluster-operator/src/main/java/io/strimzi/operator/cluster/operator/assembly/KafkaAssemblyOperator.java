@@ -719,6 +719,25 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
 
                 futures.add(
                     remoteCaReconciler.reconcile(clock)
+                        .recover(error -> {
+                            if (isAuthenticationError(error)) {
+                                LOGGER.errorCr(reconciliation, 
+                                    "Authentication failed for remote cluster '{}'. " +
+                                    "The kubeconfig secret appears to be invalid or expired. " +
+                                    "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials.",
+                                    targetClusterId);
+                                // Return failed future to propagate the error
+                                return Future.failedFuture(new IllegalStateException(
+                                    String.format("Authentication failed for remote cluster '%s'. " +
+                                        "The kubeconfig secret may have expired. " +
+                                        "Please update the secret with valid credentials.", targetClusterId),
+                                    error));
+                            } else {
+                                LOGGER.errorCr(reconciliation, "Failed to reconcile CAs in remote cluster {}: {}", 
+                                    targetClusterId, error.getMessage());
+                                return Future.failedFuture(error);
+                            }
+                        })
                         .compose(result -> {
                             LOGGER.debugOp("{}: CAs reconciled in remote cluster {}", 
                                        reconciliation, targetClusterId);
@@ -1155,6 +1174,42 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
         }
 
         return hasAnnotation;
+    }
+
+    /**
+     * Checks if an error is related to authentication or authorization failures.
+     * This typically indicates expired or invalid credentials.
+     *
+     * @param error The exception to check
+     * @return true if this is an authentication/authorization error, false otherwise
+     */
+    private static boolean isAuthenticationError(Throwable error) {
+        if (error == null) {
+            return false;
+        }
+        
+        // Check the error itself
+        if (error.getMessage() != null) {
+            String message = error.getMessage();
+            if (message.contains("Unauthorized") || 
+                message.contains("401") ||
+                message.contains("Forbidden") ||
+                message.contains("403")) {
+                return true;
+            }
+        }
+        
+        // Check the cause
+        Throwable cause = error.getCause();
+        if (cause != null && cause.getMessage() != null) {
+            String causeMessage = cause.getMessage();
+            return causeMessage.contains("Unauthorized") || 
+                   causeMessage.contains("401") ||
+                   causeMessage.contains("Forbidden") ||
+                   causeMessage.contains("403");
+        }
+        
+        return false;
     }
 
     /**
