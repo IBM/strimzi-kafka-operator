@@ -724,18 +724,17 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
                                 LOGGER.errorCr(reconciliation, 
                                     "Authentication failed for remote cluster '{}'. " +
                                     "The kubeconfig secret appears to be invalid or expired. " +
-                                    "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials.",
+                                    "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials. " +
+                                    "Skipping CA reconciliation for this cluster.",
                                     targetClusterId);
-                                // Return failed future to propagate the error
-                                return Future.failedFuture(new IllegalStateException(
-                                    String.format("Authentication failed for remote cluster '%s'. " +
-                                        "The kubeconfig secret may have expired. " +
-                                        "Please update the secret with valid credentials.", targetClusterId),
-                                    error));
+                                // Return success to continue with other clusters
+                                return Future.succeededFuture();
                             } else {
-                                LOGGER.errorCr(reconciliation, "Failed to reconcile CAs in remote cluster {}: {}", 
+                                LOGGER.errorCr(reconciliation, "Failed to reconcile CAs in remote cluster {}: {}. " +
+                                    "Skipping CA reconciliation for this cluster.", 
                                     targetClusterId, error.getMessage());
-                                return Future.failedFuture(error);
+                                // Return success to continue with other clusters
+                                return Future.succeededFuture();
                             }
                         })
                         .compose(result -> {

@@ -220,15 +220,19 @@ public class CaReconciler {
             }
         } catch (io.fabric8.kubernetes.client.KubernetesClientException e) {
             if (isAuthenticationError(e)) {
-                String errorMsg = String.format("Authentication failed for remote cluster '%s'. " +
+                LOGGER.errorCr(reconciliation, 
+                    "Authentication failed for remote cluster '{}'. " +
                     "The kubeconfig secret appears to be invalid or expired. " +
-                    "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials.", targetClusterId);
-                LOGGER.errorCr(reconciliation, errorMsg);
-                throw new IllegalStateException(errorMsg, e);
+                    "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials. " +
+                    "CA reconciliation will be skipped for this cluster.", targetClusterId);
+                // Set gcOwnerRef to null and continue - don't fail the reconciliation
+                this.gcOwnerRef = null;
             } else {
-                LOGGER.errorCr(reconciliation, "Failed to fetch GC ConfigMap from remote cluster {}: {}", 
+                LOGGER.errorCr(reconciliation, "Failed to fetch GC ConfigMap from remote cluster {}: {}. " +
+                    "CA reconciliation will be skipped for this cluster.", 
                     targetClusterId, e.getMessage());
-                throw e;
+                // Set gcOwnerRef to null and continue
+                this.gcOwnerRef = null;
             }
         }
         
