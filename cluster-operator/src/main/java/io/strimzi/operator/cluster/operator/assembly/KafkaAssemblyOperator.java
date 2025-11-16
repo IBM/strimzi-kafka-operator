@@ -586,6 +586,11 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
          * @return  Future with Reconciliation State
          */
         Future<ReconciliationState> createGarbageCollectorConfigMaps() {
+            if (!(isStretchClusterWithPluggableProvider(kafkaAssembly) &&
+                KafkaAssemblyOperator.this.remoteResourceOperatorSupplier != null)) {
+                return Future.succeededFuture(this);
+            }
+
             Set<String> remoteClusterIds = config.getRemoteClusters().keySet();
             if (remoteClusterIds.isEmpty()) {
                 return Future.succeededFuture(this);
@@ -594,6 +599,12 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
             List<Future<Void>> futures = new ArrayList<>();
             
             for (String targetClusterId : remoteClusterIds) {
+                // Skip if remote resource operator supplier doesn't have this cluster (e.g., due to auth failure)
+                if (remoteResourceOperatorSupplier.get(targetClusterId) == null) {
+                    LOGGER.warnCr(reconciliation, "Skipping GC ConfigMap creation for remote cluster '{}' - cluster not available", targetClusterId);
+                    continue;
+                }
+
                 ConfigMapOperator configMapOp = 
                     remoteResourceOperatorSupplier.get(targetClusterId).configMapOperations;
                 String gcConfigMapName = KafkaResources.kafkaComponentName(name) + "-gc";
@@ -689,6 +700,12 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
             List<Future<Void>> futures = new ArrayList<>();
             Set<String> remoteClusterIds = config.getRemoteClusters().keySet();
             for (String targetClusterId : remoteClusterIds) {
+                // Skip if remote resource operator supplier doesn't have this cluster (e.g., due to auth failure)
+                if (remoteResourceOperatorSupplier.get(targetClusterId) == null) {
+                    LOGGER.warnCr(reconciliation, "Skipping CA reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                    continue;
+                }
+
                 SecretOperator remoteSecretOp = 
                     remoteResourceOperatorSupplier.get(targetClusterId).secretOperations;
                 StrimziPodSetOperator remotePodSetOp = 
