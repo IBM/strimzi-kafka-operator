@@ -7,7 +7,6 @@ package io.strimzi.operator.cluster.stretch;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.strimzi.api.kafka.model.kafka.Kafka;
 import io.strimzi.api.kafka.model.nodepool.KafkaNodePool;
-import io.strimzi.operator.common.Reconciliation;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
@@ -290,12 +289,10 @@ public class StretchClusterValidator {
     /**
      * Validate runtime connectivity to remote clusters.
      *
-     * @param reconciliation Reconciliation context
      * @param clusterClients Map of cluster ID to KubernetesClient
      * @return Future with ValidationResult
      */
     public Future<ValidationResult> validateRuntimeConnectivity(
-            final Reconciliation reconciliation,
             final Map<String, KubernetesClient> clusterClients) {
 
         List<Future<ValidationResult>> futures = new ArrayList<>();
@@ -305,7 +302,7 @@ public class StretchClusterValidator {
             String clusterId = entry.getKey();
             KubernetesClient client = entry.getValue();
 
-            futures.add(validateClusterConnectivity(reconciliation,
+            futures.add(validateClusterConnectivity(
                 clusterId, client));
         }
 
@@ -331,15 +328,14 @@ public class StretchClusterValidator {
      * @return Future with ValidationResult
      */
     private Future<ValidationResult> validateClusterConnectivity(
-            final Reconciliation reconciliation,
             final String clusterId,
             final KubernetesClient client) {
 
         return vertx.executeBlocking(() -> {
             try {
                 // Check API server reachable by getting version
-                LOGGER.debug("{}: Validating connectivity to cluster {}",
-                    reconciliation, clusterId);
+                LOGGER.debug("Validating connectivity to cluster {}",
+                    clusterId);
                 client.getKubernetesVersion();
 
                 // Check required CRDs exist
@@ -358,13 +354,12 @@ public class StretchClusterValidator {
                     );
                 }
 
-                LOGGER.debug("{}: Cluster {} connectivity validated "
-                    + "successfully", reconciliation, clusterId);
+                LOGGER.debug("Cluster {} connectivity validated "
+                    + "successfully", clusterId);
                 return ValidationResult.success();
 
             } catch (Exception e) {
-                LOGGER.warn("{}: Failed to connect to cluster {}: {}",
-                    reconciliation, clusterId, e.getMessage());
+                LOGGER.warn("Failed to connect to cluster {}: {}", clusterId, e.getMessage());
                 return ValidationResult.error(
                     "ConnectivityError",
                     String.format("Cannot connect to cluster '%s': %s. "

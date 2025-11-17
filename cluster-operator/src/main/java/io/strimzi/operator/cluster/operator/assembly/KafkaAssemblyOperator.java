@@ -122,6 +122,7 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
     private StretchNetworkingProvider stretchNetworkingProvider;
     private io.strimzi.operator.cluster.stretch.RemoteResourceOperatorSupplier remoteResourceOperatorSupplier;
     private Map<String, PlatformFeaturesAvailability> remotePfas;
+    private boolean remoteKubeConfigsValid;
 
     /**
      * @param vertx The Vertx instance
@@ -153,11 +154,13 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
      *
      * @param remoteResourceOperatorSupplier Supplies the operators for remote clusters
      * @param remotePfas Remote platform features availabilities
+     * @param remoteKubeConfigsValid Remote kubeconfigs are valid or not
      * @return This operator instance for method chaining
      */
     public KafkaAssemblyOperator withStretchCapabilities(
             io.strimzi.operator.cluster.stretch.RemoteResourceOperatorSupplier remoteResourceOperatorSupplier,
-            Map<String, PlatformFeaturesAvailability> remotePfas) {
+            Map<String, PlatformFeaturesAvailability> remotePfas,
+            boolean remoteKubeConfigsValid) {
 
         if (config.isStretchClusterConfigured()) {
             INIT_LOGGER.info("Stretch cluster configuration detected (central: {}, provider: {})",
@@ -183,6 +186,7 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
                 this.stretchNetworkingProvider = networkingProvider;
                 this.remoteResourceOperatorSupplier = remoteResourceOperatorSupplier;
                 this.remotePfas = remotePfas;
+                this.remoteKubeConfigsValid = remoteKubeConfigsValid;
 
                 INIT_LOGGER.info("Stretch cluster support initialized with provider: {}",
                            networkingProvider != null ? networkingProvider.getProviderName() : "none");
@@ -548,6 +552,12 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
             // Only validate if stretch cluster mode is enabled
             if (!isStretchClusterWithPluggableProvider(kafkaAssembly)) {
                 return Future.succeededFuture(this);
+            }
+
+            if (!remoteKubeConfigsValid) {
+                return Future.failedFuture(
+                    new InvalidConfigurationException("Stretch cluster specified on kafka but remote kube configs invalid")
+                );
             }
 
             // Get node pools for validation

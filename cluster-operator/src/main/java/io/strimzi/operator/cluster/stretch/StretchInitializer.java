@@ -37,18 +37,26 @@ public class StretchInitializer {
     public static class InitializationResult {
         private final Map<String, PlatformFeaturesAvailability> remotePfas;
         private final RemoteResourceOperatorSupplier remoteResourceOperatorSupplier;
+        private final boolean remoteKubeConfigsValid;
+        private final boolean envConfigsValid;
 
         /**
          * Constructor.
          *
          * @param remotePfas Platform features availability for remote clusters
          * @param remoteResourceOperatorSupplier Remote resource operator supplier
+         * @param envConfigsValid Cluster operator environment configs valid
+         * @param remoteKubeConfigsValid Remote Kuberenetes clients did not expire
          */
         public InitializationResult(
                 Map<String, PlatformFeaturesAvailability> remotePfas,
-                RemoteResourceOperatorSupplier remoteResourceOperatorSupplier) {
+                RemoteResourceOperatorSupplier remoteResourceOperatorSupplier,
+                boolean envConfigsValid,
+                boolean remoteKubeConfigsValid) {
             this.remotePfas = remotePfas;
             this.remoteResourceOperatorSupplier = remoteResourceOperatorSupplier;
+            this.envConfigsValid = envConfigsValid;
+            this.remoteKubeConfigsValid = remoteKubeConfigsValid;
         }
 
         /**
@@ -67,6 +75,24 @@ public class StretchInitializer {
          */
         public RemoteResourceOperatorSupplier getRemoteResourceOperatorSupplier() {
             return remoteResourceOperatorSupplier;
+        }
+
+        /**
+         * Gets the the result of remote kube configs valid
+         *
+         * @return value of remoteKubeConfigsValid
+         */
+        public boolean remoteKubeConfigsValid() {
+            return remoteKubeConfigsValid;
+        }
+
+        /**
+         * Gets the the result of env configs valid
+         *
+         * @return value of envconfigs valid
+         */
+        public boolean envConfigsValid() {
+            return envConfigsValid;
         }
     }
 
@@ -94,19 +120,30 @@ public class StretchInitializer {
         // Check if stretch is configured
         if (!config.isStretchClusterConfigurationValid()) {
             LOGGER.debug("Stretch cluster configuration not valid. Skipping stretch initialization.");
-            return Future.succeededFuture(new InitializationResult(new HashMap<>(), null));
-        }
+            return Future.succeededFuture(new InitializationResult(new HashMap<>(), null, false, false));
+        } 
 
-        LOGGER.info("Initializing stretch cluster functionality...");
+        StretchClusterValidator validator = new StretchClusterValidator(vertx, config.getCentralClusterId(), config.getRemoteClusters().keySet());
 
-        // Step 1: Create PlatformFeaturesAvailability for remote clusters
-        return createRemotePlatformFeaturesAvailability(vertx, remoteClientSupplier)
-            .compose(remotePfas -> {
-                // Step 2: Initialize networking provider and create RemoteResourceOperatorSupplier
-                RemoteResourceOperatorSupplier remoteResourceOperatorSupplier =
-                    initializeNetworkingProvider(config, vertx, client, remoteClientSupplier, centralPfa, remotePfas);
-
-                return Future.succeededFuture(new InitializationResult(remotePfas, remoteResourceOperatorSupplier));
+        
+        
+        return validator
+            .validateRuntimeConnectivity(remoteClientSupplier.getRemoteClients())
+            .compose(result -> {
+                if (result.isValid()) {
+                    LOGGER.info("Initializing stretch cluster functionality...");
+                    // Step 1: Create PlatformFeaturesAvailability for remote clusters
+                    return createRemotePlatformFeaturesAvailability(vertx, remoteClientSupplier)
+                        .compose(remotePfas -> {
+                            RemoteResourceOperatorSupplier remoteResourceOperatorSupplier =
+                                initializeNetworkingProvider(config, vertx, client, remoteClientSupplier, centralPfa, remotePfas);
+                            // Step 2: Initialize networking provider and create RemoteResourceOperatorSupplier
+                            return Future.succeededFuture(new InitializationResult(remotePfas, remoteResourceOperatorSupplier, true, true));
+                        });
+                } else {
+                    LOGGER.error("Kube config files are invalid. Cannot reconcile stretched kafka cluster");
+                    return Future.succeededFuture(new InitializationResult(new HashMap<>(), null, true, false));
+                }
             });
     }
 

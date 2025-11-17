@@ -123,7 +123,7 @@ public class StretchInitializerTest {
         
         // Act
         StretchInitializer.InitializationResult result = 
-            new StretchInitializer.InitializationResult(remotePfas, supplier);
+            new StretchInitializer.InitializationResult(remotePfas, supplier, true, true);
         
         // Assert
         assertThat("Remote PFAs should be set", result.getRemotePfas(), is(notNullValue()));
@@ -140,7 +140,7 @@ public class StretchInitializerTest {
         
         // Act
         StretchInitializer.InitializationResult result = 
-            new StretchInitializer.InitializationResult(remotePfas, null);
+            new StretchInitializer.InitializationResult(remotePfas, null, true, true);
         
         // Assert
         assertThat("Remote PFAs should be empty", result.getRemotePfas().isEmpty(), is(true));
