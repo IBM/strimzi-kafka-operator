@@ -516,6 +516,13 @@ public class KafkaReconciler {
 
         for (String targetClusterId : clusterIds) {
             SecretOperator secretOp = selectSecretOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (secretOp == null) {
+                LOGGER.warnCr(reconciliation, "Skipping certificate secrets reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             boolean isCentral = targetClusterId.equals(stretchCentralClusterId);
 
             futures.add(
@@ -540,13 +547,13 @@ public class KafkaReconciler {
                                 if (!isCentral) {
                                     String gcConfigMapName = KafkaResources.kafkaComponentName(reconciliation.name()) + "-gc";
                                     String gcUid = gcConfigMapUids.get(targetClusterId);
-                                    
+
                                     if (gcUid == null) {
                                         LOGGER.warnCr(reconciliation, "GC ConfigMap UID not available for cluster {}, skipping owner reference for Secret {}", 
                                             targetClusterId, secret.getMetadata().getName());
                                         return secret;
                                     }
-                                    
+
                                     return new io.fabric8.kubernetes.api.model.SecretBuilder(secret)
                                         .editMetadata()
                                             .withOwnerReferences((List<OwnerReference>) null)
@@ -663,6 +670,13 @@ public class KafkaReconciler {
 
         for (String targetClusterId : clusterIds) {
             ConfigMapOperator configMapOp = selectConfigMapOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (configMapOp == null) {
+                LOGGER.warnCr(reconciliation, "Skipping per-broker configuration ConfigMaps reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             boolean isCentral = targetClusterId.equals(stretchCentralClusterId);
 
             List<ConfigMap> generatedConfigMaps = kafka.generatePerBrokerConfigurationConfigMaps(
@@ -777,6 +791,12 @@ public class KafkaReconciler {
         for (String targetCluster : targetedPodSets.keySet()) {
             boolean isCentralCluster = targetCluster.equals(stretchCentralClusterId);
             StrimziPodSetOperator spsOp = selectStrimziPodSetOperator(targetCluster);
+
+            // Skip if operator is null (cluster not available)
+            if (spsOp == null) {
+                LOGGER.warnCr(reconciliation, "Skipping PodSet reconciliation for remote cluster '{}' - cluster not available", targetCluster);
+                continue;
+            }
 
             // Add GC ConfigMap as owner for remote cluster resources
             List<StrimziPodSet> podSets = targetedPodSets.get(targetCluster);
@@ -1413,8 +1433,8 @@ public class KafkaReconciler {
         StrimziPodSetOperator operator = targetClusterId != null ? selectStrimziPodSetOperator(targetClusterId) : strimziPodSetOperator;
 
         if (operator == null) {
-            LOGGER.warnCr(reconciliation, "Cannot list PodSets for cluster {} - operator is null (invalid cluster ID)", targetClusterId);
-            return Future.succeededFuture(Collections.emptyList());
+            LOGGER.warnCr(reconciliation, "Cannot list PodSets for cluster {} - operator is null (cluster not available)", targetClusterId);
+            return Future.succeededFuture(List.of());
         }
 
         return operator.listAsync(reconciliation.namespace(), kafka.getSelectorLabels())
@@ -1452,7 +1472,14 @@ public class KafkaReconciler {
      * @return  List with node references to nodes which should be rolled
      */
     private Future<List<NodeRef>> podsForManualRollingUpdateDiscoveredThroughPodAnnotations(String targetClusterId)   {
-        return (targetClusterId != null ? selectPodOperator(targetClusterId) : podOperator)
+        PodOperator operator = targetClusterId != null ? selectPodOperator(targetClusterId) : podOperator;
+
+        if (operator == null) {
+            LOGGER.warnCr(reconciliation, "Cannot list Pods for cluster {} - operator is null (cluster not available)", targetClusterId);
+            return Future.succeededFuture(List.of());
+        }
+
+        return operator
                 .listAsync(reconciliation.namespace(), kafka.getSelectorLabels())
                 .map(pods -> {
                     List<NodeRef> nodes = new ArrayList<>();
@@ -1580,18 +1607,25 @@ public class KafkaReconciler {
 
         for (String targetClusterId : clusterIds) {
             ServiceAccountOperator operator = selectServiceAccountOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (operator == null) {
+                LOGGER.warnCr(reconciliation, "Skipping ServiceAccount reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             ServiceAccount sa = serviceAccount;
 
             // For remote clusters, replace Kafka CR owner reference with GC ConfigMap owner reference
             if (!targetClusterId.equals(stretchCentralClusterId)) {
                 String gcConfigMapName = KafkaResources.kafkaComponentName(reconciliation.name()) + "-gc";
                 String gcUid = gcConfigMapUids.get(targetClusterId);
-                
+
                 if (gcUid == null) {
                     LOGGER.warnCr(reconciliation, "GC ConfigMap UID not available for cluster {}, skipping ServiceAccount creation", targetClusterId);
                     continue; // Skip this cluster if UID not available
                 }
-                
+
                 sa = new io.fabric8.kubernetes.api.model.ServiceAccountBuilder(serviceAccount)
                     .editMetadata()
                         .withOwnerReferences((List<OwnerReference>) null)
@@ -1638,6 +1672,13 @@ public class KafkaReconciler {
             }
 
             ConfigMapOperator operator = selectConfigMapOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (operator == null) {
+                LOGGER.warnCr(reconciliation, "Skipping GC ConfigMap creation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             String configMapName = KafkaResources.kafkaComponentName(reconciliation.name()) + "-gc";
 
             // Build the ConfigMap with metadata about managed resources
@@ -1735,6 +1776,12 @@ public class KafkaReconciler {
         List<Future<Void>> futures = new ArrayList<>();
         for (String targetClusterId : clusterIds) {
             ClusterRoleBindingOperator crbOp = selectClusterRoleBindingOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (crbOp == null) {
+                LOGGER.warnCr(reconciliation, "Skipping ClusterRoleBinding reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
             futures.add(
                 ReconcilerUtils.withIgnoreRbacError(
                     reconciliation,
@@ -1792,8 +1839,16 @@ public class KafkaReconciler {
         List<Future<Void>> futures = new ArrayList<>();
 
         for (String targetClusterId : clusterIds) {
+            StrimziPodSetOperator podSetOp = selectStrimziPodSetOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (podSetOp == null) {
+                LOGGER.warnCr(reconciliation, "Skipping scale down for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             futures.add(
-                scaleDown(kafka.nodesAtCluster(targetClusterId), selectStrimziPodSetOperator(targetClusterId))
+                scaleDown(kafka.nodesAtCluster(targetClusterId), podSetOp)
             );
         }
 
@@ -2548,6 +2603,12 @@ public class KafkaReconciler {
         for (String targetClusterId : clusterIds) {
             PvcOperator pvcOp = selectPvcOperator(targetClusterId);
             StorageClassOperator storageClassOp = selectStorageClassOperator(targetClusterId);
+
+            // Skip if operators are null (cluster not available)
+            if (pvcOp == null || storageClassOp == null) {
+                LOGGER.warnCr(reconciliation, "Skipping PVC deletion for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
             futures.add(
                 pvcOp.listAsync(reconciliation.namespace(), kafka.getSelectorLabels())
                 .compose(pvcs -> {
@@ -2765,7 +2826,7 @@ public class KafkaReconciler {
     private <T extends HasMetadata> List<T> addGarbageCollectorOwnerReference(String targetClusterId, List<T> resources) {
         String gcConfigMapName = KafkaResources.kafkaComponentName(reconciliation.name()) + "-gc";
         String gcUid = gcConfigMapUids.get(targetClusterId);
-        
+
         if (gcUid == null) {
             LOGGER.warnCr(reconciliation, "GC ConfigMap UID not found for cluster {}, cannot add owner reference", targetClusterId);
             return resources; // Return unchanged if UID not available

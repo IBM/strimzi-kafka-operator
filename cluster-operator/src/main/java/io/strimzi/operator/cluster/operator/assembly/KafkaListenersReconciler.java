@@ -53,7 +53,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -285,6 +284,14 @@ public class KafkaListenersReconciler {
         Map<String, List<Service>> clusteredPerBrokerServices = kafka.generateClusteredPerPodServices();
 
         for (String targetClusterId : this.targetClusterIds) {
+            ServiceOperator operator = selectServiceOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (operator == null) {
+                LOGGER.warnCr(reconciliation, "Skipping service reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             boolean isCentralCluster = targetClusterId.equals(centralClusterId);
 
             List<Service> commonServices = isCentralCluster
@@ -302,7 +309,7 @@ public class KafkaListenersReconciler {
                                     .collect(Collectors.toList());
             }
 
-            futures.add(selectServiceOperator(targetClusterId)
+            futures.add(operator
                     .batchReconcile(
                         reconciliation,
                         reconciliation.namespace(),
@@ -396,6 +403,14 @@ public class KafkaListenersReconciler {
         }
 
         for (String targetClusterId : this.targetClusterIds) {
+            RouteOperator operator = selectRouteOperator(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (operator == null) {
+                LOGGER.warnCr(reconciliation, "Skipping route reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             boolean isCentralCluster = targetClusterId.equals(centralClusterId);
             List<Route> routes = Stream.concat(
                                                     (isCentralCluster ? 
@@ -412,7 +427,7 @@ public class KafkaListenersReconciler {
                                 .collect(Collectors.toList());
             }
             futures.add(
-                (isCentralCluster ? routeOperator : stretchRouteOperators.get(targetClusterId))
+                operator
                 .batchReconcile(
                     reconciliation, 
                     reconciliation.namespace(), 
@@ -457,6 +472,16 @@ public class KafkaListenersReconciler {
         for (String targetClusterId : this.targetClusterIds) {
             boolean isCentralCluster = targetClusterId.equals(centralClusterId);
 
+            IngressOperator operator = isCentralCluster
+                    ? ingressOperator
+                    : stretchIngressOperators.get(targetClusterId);
+
+            // Skip if operator is null (cluster not available)
+            if (operator == null) {
+                LOGGER.warnCr(reconciliation, "Skipping ingress reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                continue;
+            }
+
             List<Ingress> bootstrapIngresses = isCentralCluster
                     ? bootstrapIngressesWithOwnerReferences
                     : bootstrapIngressesWithoutOwnerReferences;
@@ -465,11 +490,6 @@ public class KafkaListenersReconciler {
 
             List<Ingress> ingresses = Stream.concat(bootstrapIngresses.stream(), perBrokerIngresses.stream())
                                             .collect(Collectors.toList());
-
-            IngressOperator operator = isCentralCluster
-                    ? ingressOperator
-                    : Objects.requireNonNull(stretchIngressOperators.get(targetClusterId),
-                        "Missing stretchIngressOperator for clusterId: " + targetClusterId);
 
             if (!isCentralCluster) {
                 ingresses = ingresses.stream()
@@ -837,7 +857,7 @@ public class KafkaListenersReconciler {
     private ServiceOperator selectServiceOperator(String clusterId) {
         return clusterId.equals(centralClusterId)
             ? serviceOperator
-            : Objects.requireNonNull(stretchServiceOperators.get(clusterId), "Missing operator for cluster " + clusterId);
+            : stretchServiceOperators.get(clusterId);
     }
 
 
@@ -1144,36 +1164,50 @@ public class KafkaListenersReconciler {
 
             // Step 1: Wait until all bootstrap routes are ready
             List<Future<?>> bootstrapRouteReadinessFutures = targetClusterIds.stream()
-                .map(clusterId -> selectRouteOperator(clusterId)
-                    .hasAddress(reconciliation, reconciliation.namespace(), bootstrapRouteName, 1_000, operationTimeoutMs))
+                .map(clusterId -> {
+                    RouteOperator operator = selectRouteOperator(clusterId);
+                    if (operator == null) {
+                        LOGGER.warnCr(reconciliation, "Skipping route readiness check for cluster '{}' - cluster not available", clusterId);
+                        return Future.succeededFuture();
+                    }
+                    return operator.hasAddress(reconciliation, reconciliation.namespace(), bootstrapRouteName, 1_000, operationTimeoutMs);
+                })
                 .collect(Collectors.toList());
 
             Future perListenerFuture = Future.join(bootstrapRouteReadinessFutures)
                 // Step 2: Collect bootstrap addresses
                 .compose(ignore -> {
                     List<Future<Route>> bootstrapRoutes = targetClusterIds.stream()
-                        .map(clusterId -> selectRouteOperator(clusterId)
-                            .getAsync(reconciliation.namespace(), bootstrapRouteName))
+                        .map(clusterId -> {
+                            RouteOperator operator = selectRouteOperator(clusterId);
+                            if (operator == null) {
+                                LOGGER.warnCr(reconciliation, "Skipping bootstrap route collection for cluster '{}' - cluster not available", clusterId);
+                                return Future.succeededFuture((Route) null);
+                            }
+                            return operator.getAsync(reconciliation.namespace(), bootstrapRouteName);
+                        })
                         .collect(Collectors.toList());
                     return Future.join(bootstrapRoutes);
                 })
                 .compose(routesFuture -> {
                     List<Route> routes = routesFuture.result().list();
                     for (Route route : routes) {
-                        String host = extractRouteHost(route);
-                        if (host != null) {
-                            LOGGER.debugCr(reconciliation, "Found address {} for Route {}", host, bootstrapRouteName);
+                        if (route != null) {
+                            String host = extractRouteHost(route);
+                            if (host != null) {
+                                LOGGER.debugCr(reconciliation, "Found address {} for Route {}", host, bootstrapRouteName);
 
-                            result.bootstrapDnsNames.add(host);
+                                result.bootstrapDnsNames.add(host);
 
-                            ListenerStatus listenerStatus = new ListenerStatusBuilder()
-                                .withName(listener.getName())
-                                .withAddresses(new ListenerAddressBuilder()
-                                    .withHost(host)
-                                    .withPort(KafkaCluster.ROUTE_PORT)
-                                    .build())
-                                .build();
-                            result.listenerStatuses.add(listenerStatus);
+                                ListenerStatus listenerStatus = new ListenerStatusBuilder()
+                                    .withName(listener.getName())
+                                    .withAddresses(new ListenerAddressBuilder()
+                                        .withHost(host)
+                                        .withPort(KafkaCluster.ROUTE_PORT)
+                                        .build())
+                                    .build();
+                                result.listenerStatuses.add(listenerStatus);
+                            }
                         }
                     }
                     return Future.succeededFuture();
@@ -1185,7 +1219,13 @@ public class KafkaListenersReconciler {
                             String brokerRouteName = ListenersUtils.backwardsCompatiblePerBrokerServiceName(
                                 ReconcilerUtils.getControllerNameFromPodName(node.podName()), node.nodeId(), listener);
 
-                            return selectRouteOperator(node.clusterId())
+                            RouteOperator operator = selectRouteOperator(node.clusterId());
+                            if (operator == null) {
+                                LOGGER.warnCr(reconciliation, "Skipping per-broker route collection for node {} in cluster '{}' - cluster not available", node.nodeId(), node.clusterId());
+                                return Future.succeededFuture();
+                            }
+
+                            return operator
                                 .getAsync(reconciliation.namespace(), brokerRouteName)
                                 .compose(route -> {
                                     String host = extractRouteHost(route);

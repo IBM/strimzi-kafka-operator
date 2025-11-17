@@ -586,6 +586,11 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
          * @return  Future with Reconciliation State
          */
         Future<ReconciliationState> createGarbageCollectorConfigMaps() {
+            if (!(isStretchClusterWithPluggableProvider(kafkaAssembly) &&
+                KafkaAssemblyOperator.this.remoteResourceOperatorSupplier != null)) {
+                return Future.succeededFuture(this);
+            }
+
             Set<String> remoteClusterIds = config.getRemoteClusters().keySet();
             if (remoteClusterIds.isEmpty()) {
                 return Future.succeededFuture(this);
@@ -594,6 +599,12 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
             List<Future<Void>> futures = new ArrayList<>();
             
             for (String targetClusterId : remoteClusterIds) {
+                // Skip if remote resource operator supplier doesn't have this cluster (e.g., due to auth failure)
+                if (remoteResourceOperatorSupplier.get(targetClusterId) == null) {
+                    LOGGER.warnCr(reconciliation, "Skipping GC ConfigMap creation for remote cluster '{}' - cluster not available", targetClusterId);
+                    continue;
+                }
+
                 ConfigMapOperator configMapOp = 
                     remoteResourceOperatorSupplier.get(targetClusterId).configMapOperations;
                 String gcConfigMapName = KafkaResources.kafkaComponentName(name) + "-gc";
@@ -689,6 +700,12 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
             List<Future<Void>> futures = new ArrayList<>();
             Set<String> remoteClusterIds = config.getRemoteClusters().keySet();
             for (String targetClusterId : remoteClusterIds) {
+                // Skip if remote resource operator supplier doesn't have this cluster (e.g., due to auth failure)
+                if (remoteResourceOperatorSupplier.get(targetClusterId) == null) {
+                    LOGGER.warnCr(reconciliation, "Skipping CA reconciliation for remote cluster '{}' - cluster not available", targetClusterId);
+                    continue;
+                }
+
                 SecretOperator remoteSecretOp = 
                     remoteResourceOperatorSupplier.get(targetClusterId).secretOperations;
                 StrimziPodSetOperator remotePodSetOp = 
@@ -719,6 +736,24 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
 
                 futures.add(
                     remoteCaReconciler.reconcile(clock)
+                        .recover(error -> {
+                            if (isAuthenticationError(error)) {
+                                LOGGER.errorCr(reconciliation, 
+                                    "Authentication failed for remote cluster '{}'. " +
+                                    "The kubeconfig secret appears to be invalid or expired. " +
+                                    "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials. " +
+                                    "Skipping CA reconciliation for this cluster.",
+                                    targetClusterId);
+                                // Return success to continue with other clusters
+                                return Future.succeededFuture();
+                            } else {
+                                LOGGER.errorCr(reconciliation, "Failed to reconcile CAs in remote cluster {}: {}. " +
+                                    "Skipping CA reconciliation for this cluster.", 
+                                    targetClusterId, error.getMessage());
+                                // Return success to continue with other clusters
+                                return Future.succeededFuture();
+                            }
+                        })
                         .compose(result -> {
                             LOGGER.debugOp("{}: CAs reconciled in remote cluster {}", 
                                        reconciliation, targetClusterId);
@@ -1155,6 +1190,42 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
         }
 
         return hasAnnotation;
+    }
+
+    /**
+     * Checks if an error is related to authentication or authorization failures.
+     * This typically indicates expired or invalid credentials.
+     *
+     * @param error The exception to check
+     * @return true if this is an authentication/authorization error, false otherwise
+     */
+    private static boolean isAuthenticationError(Throwable error) {
+        if (error == null) {
+            return false;
+        }
+        
+        // Check the error itself
+        if (error.getMessage() != null) {
+            String message = error.getMessage();
+            if (message.contains("Unauthorized") || 
+                message.contains("401") ||
+                message.contains("Forbidden") ||
+                message.contains("403")) {
+                return true;
+            }
+        }
+        
+        // Check the cause
+        Throwable cause = error.getCause();
+        if (cause != null && cause.getMessage() != null) {
+            String causeMessage = cause.getMessage();
+            return causeMessage.contains("Unauthorized") || 
+                   causeMessage.contains("401") ||
+                   causeMessage.contains("Forbidden") ||
+                   causeMessage.contains("403");
+        }
+        
+        return false;
     }
 
     /**

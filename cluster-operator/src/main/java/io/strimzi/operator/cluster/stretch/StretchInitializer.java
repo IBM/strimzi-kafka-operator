@@ -134,8 +134,13 @@ public class StretchInitializer {
                 .create(vertx, clusterClient, true)
                 .recover(error -> handleRemoteClusterConnectionError(clusterId, error))
                 .compose(pfaResult -> {
-                    remotePfas.put(clusterId, pfaResult);
-                    LOGGER.info("PlatformFeaturesAvailability created for remote cluster '{}'", clusterId);
+                    // Only add to map if connection was successful (not null)
+                    if (pfaResult != null) {
+                        remotePfas.put(clusterId, pfaResult);
+                        LOGGER.info("PlatformFeaturesAvailability created for remote cluster '{}'", clusterId);
+                    } else {
+                        LOGGER.warn("Skipping remote cluster '{}' due to connection failure", clusterId);
+                    }
                     return Future.succeededFuture(pfaResult);
                 }));
         }
@@ -215,28 +220,30 @@ public class StretchInitializer {
     /**
      * Handles connection errors when attempting to connect to remote clusters.
      * Provides specific error messages for authentication failures (expired tokens).
+     * Returns null instead of failing to allow the operator to continue running.
      *
      * @param clusterId The ID of the remote cluster that failed to connect
      * @param error The error that occurred during connection
-     * @return A failed Future with an appropriate exception
+     * @return A succeeded Future with null value to skip this cluster
      */
     private static Future<PlatformFeaturesAvailability> handleRemoteClusterConnectionError(String clusterId, Throwable error) {
         if (isAuthenticationError(error)) {
             LOGGER.error("Failed to connect to remote cluster '{}'. " +
                 "The kubeconfig secret appears to be invalid or expired. " +
                 "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials. " +
+                "Stretch cluster functionality will be disabled for this cluster until credentials are fixed. " +
                 "Error: {}", clusterId, error.getMessage());
-
-            return Future.failedFuture(new IllegalStateException(
-                String.format("Authentication failed for remote cluster '%s'. " +
-                    "The kubeconfig secret may have expired. " +
-                    "Please update the secret with valid credentials.", clusterId),
-                error));
+            
+            // Return null to skip this cluster but continue operator startup
+            return Future.succeededFuture(null);
         }
-
-        LOGGER.error("Failed to create PlatformFeaturesAvailability for remote cluster '{}': {}",
-            clusterId, error.getMessage());
-        return Future.failedFuture(error);
+        
+        LOGGER.error("Failed to create PlatformFeaturesAvailability for remote cluster '{}'. " +
+            "Stretch cluster functionality will be disabled for this cluster. " +
+            "Error: {}", clusterId, error.getMessage());
+        
+        // Return null to skip this cluster but continue operator startup
+        return Future.succeededFuture(null);
     }
 
     /**

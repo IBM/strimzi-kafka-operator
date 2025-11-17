@@ -198,29 +198,66 @@ public class CaReconciler {
         
         // Try to fetch GC ConfigMap UID and set as owner reference for remote cluster secrets
         String gcConfigMapName = KafkaResources.kafkaComponentName(reconciliation.name()) + "-gc";
-        ConfigMap gcConfigMap = remoteConfigMapOperator.get(reconciliation.namespace(), gcConfigMapName);
         
-        if (gcConfigMap != null && gcConfigMap.getMetadata().getUid() != null) {
-            this.gcOwnerRef = new OwnerReferenceBuilder()
-                    .withApiVersion("v1")
-                    .withKind("ConfigMap")
-                    .withName(gcConfigMapName)
-                    .withUid(gcConfigMap.getMetadata().getUid())
-                    .withController(false)
-                    .withBlockOwnerDeletion(false)  // Must be false for ConfigMap owners
-                    .build();
-            LOGGER.infoCr(reconciliation, "Set GC ConfigMap {} (UID: {}) as owner for CA secrets in remote cluster {}",
-                    gcConfigMapName, gcConfigMap.getMetadata().getUid(), targetClusterId);
-        } else {
-            this.gcOwnerRef = null;
-            LOGGER.warnCr(reconciliation, "GC ConfigMap {} not found in remote cluster {}, CA secrets will not have owner reference",
-                    gcConfigMapName, targetClusterId);
+        try {
+            ConfigMap gcConfigMap = remoteConfigMapOperator.get(reconciliation.namespace(), gcConfigMapName);
+            
+            if (gcConfigMap != null && gcConfigMap.getMetadata().getUid() != null) {
+                this.gcOwnerRef = new OwnerReferenceBuilder()
+                        .withApiVersion("v1")
+                        .withKind("ConfigMap")
+                        .withName(gcConfigMapName)
+                        .withUid(gcConfigMap.getMetadata().getUid())
+                        .withController(false)
+                        .withBlockOwnerDeletion(false)  // Must be false for ConfigMap owners
+                        .build();
+                LOGGER.infoCr(reconciliation, "Set GC ConfigMap {} (UID: {}) as owner for CA secrets in remote cluster {}",
+                        gcConfigMapName, gcConfigMap.getMetadata().getUid(), targetClusterId);
+            } else {
+                this.gcOwnerRef = null;
+                LOGGER.warnCr(reconciliation, "GC ConfigMap {} not found in remote cluster {}, CA secrets will not have owner reference",
+                        gcConfigMapName, targetClusterId);
+            }
+        } catch (io.fabric8.kubernetes.client.KubernetesClientException e) {
+            if (isAuthenticationError(e)) {
+                LOGGER.errorCr(reconciliation, 
+                    "Authentication failed for remote cluster '{}'. " +
+                    "The kubeconfig secret appears to be invalid or expired. " +
+                    "Please update the secret referenced in STRIMZI_REMOTE_KUBE_CONFIG with valid credentials. " +
+                    "CA reconciliation will be skipped for this cluster.", targetClusterId);
+                // Set gcOwnerRef to null and continue - don't fail the reconciliation
+                this.gcOwnerRef = null;
+            } else {
+                LOGGER.errorCr(reconciliation, "Failed to fetch GC ConfigMap from remote cluster {}: {}. " +
+                    "CA reconciliation will be skipped for this cluster.", 
+                    targetClusterId, e.getMessage());
+                // Set gcOwnerRef to null and continue
+                this.gcOwnerRef = null;
+            }
         }
         
         // Keep ownerRef as null for remote clusters (no Kafka CR owner)
         this.ownerRef = null;
         
         return this;
+    }
+    
+    /**
+     * Checks if an error is related to authentication or authorization failures.
+     * 
+     * @param error The exception to check
+     * @return true if this is an authentication/authorization error, false otherwise
+     */
+    private static boolean isAuthenticationError(Throwable error) {
+        if (error == null || error.getMessage() == null) {
+            return false;
+        }
+        
+        String message = error.getMessage();
+        return message.contains("Unauthorized") || 
+               message.contains("401") ||
+               message.contains("Forbidden") ||
+               message.contains("403");
     }
 
     private SecretOperator getSecretOperator() {

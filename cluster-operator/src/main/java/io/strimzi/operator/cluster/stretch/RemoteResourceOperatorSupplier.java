@@ -80,6 +80,13 @@ public class RemoteResourceOperatorSupplier {
                 continue;
             }
 
+            // Skip if PlatformFeaturesAvailability is null (cluster connection failed)
+            PlatformFeaturesAvailability pfa = remotePfas.get(targetCluster);
+            if (pfa == null) {
+                LOGGER.warn("PlatformFeaturesAvailability for cluster '{}' is null. Skipping operator initialization for this cluster.", targetCluster);
+                continue;
+            }
+
             LOGGER.info("Initializing operators for remote cluster '{}' with API server: {}", 
                 targetCluster, stretchClient.getConfiguration().getMasterUrl());
 
@@ -90,7 +97,7 @@ public class RemoteResourceOperatorSupplier {
                     vertx,
                     stretchClient,
                     new MicrometerMetricsProvider(BackendRegistries.getDefaultNow()),
-                    remotePfas.get(targetCluster),
+                    pfa,
                     operatorName
                 )
             );
