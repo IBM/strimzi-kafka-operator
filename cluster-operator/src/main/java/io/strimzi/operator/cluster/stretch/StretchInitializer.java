@@ -92,7 +92,7 @@ public class StretchInitializer {
             PlatformFeaturesAvailability centralPfa) {
 
         // Check if stretch is configured
-        if (!config.isStretchClusterConfigurationValid()) {
+        if (!config.isStretchClusterConfigured()) {
             LOGGER.debug("Stretch cluster configuration not valid. Skipping stretch initialization.");
             return Future.succeededFuture(new InitializationResult(new HashMap<>(), null));
         }

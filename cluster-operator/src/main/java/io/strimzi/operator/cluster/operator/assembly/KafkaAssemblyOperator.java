@@ -1142,7 +1142,7 @@ public class KafkaAssemblyOperator extends AbstractAssemblyOperator<KubernetesCl
         if (hasAnnotation && !config.isStretchClusterConfigured()) {
             throw new InvalidResourceException(
                 String.format("Kafka cluster '%s' has annotation 'strimzi.io/enable-stretch-cluster: true', " +
-                    "but required environment variables STRIMZI_REMOTE_KUBE_CONFIG and STRIMZI_CENTRAL_CLUSTER_ID " +
+                    "but required environment variables " +
                     "are not properly configured in the cluster operator deployment. " +
                     "Please configure these environment variables or remove the annotation.",
                     kafka.getMetadata().getName())

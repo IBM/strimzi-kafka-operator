@@ -156,7 +156,7 @@ public class ClusterOperator extends AbstractVerticle {
                         resourceOperatorSupplier.metricsProvider,
                         config.getPodSetControllerWorkQueueSize()
                         ).withStretchCapabilities(
-                            config.isStretchClusterConfigurationValid(),
+                            config.isStretchClusterConfigured(),
                             config.getCentralClusterId()
                         );
                 strimziPodSetController.start();
