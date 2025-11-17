@@ -1625,7 +1625,7 @@ public class KafkaReconciler {
                     LOGGER.warnCr(reconciliation, "GC ConfigMap UID not available for cluster {}, skipping ServiceAccount creation", targetClusterId);
                     continue; // Skip this cluster if UID not available
                 }
-                
+
                 sa = new io.fabric8.kubernetes.api.model.ServiceAccountBuilder(serviceAccount)
                     .editMetadata()
                         .withOwnerReferences((List<OwnerReference>) null)
@@ -2826,7 +2826,7 @@ public class KafkaReconciler {
     private <T extends HasMetadata> List<T> addGarbageCollectorOwnerReference(String targetClusterId, List<T> resources) {
         String gcConfigMapName = KafkaResources.kafkaComponentName(reconciliation.name()) + "-gc";
         String gcUid = gcConfigMapUids.get(targetClusterId);
-        
+
         if (gcUid == null) {
             LOGGER.warnCr(reconciliation, "GC ConfigMap UID not found for cluster {}, cannot add owner reference", targetClusterId);
             return resources; // Return unchanged if UID not available
