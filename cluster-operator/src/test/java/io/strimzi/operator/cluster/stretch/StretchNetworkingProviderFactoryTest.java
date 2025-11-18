@@ -11,7 +11,6 @@ import io.strimzi.operator.cluster.PlatformFeaturesAvailability;
 import io.strimzi.operator.cluster.RemoteClientSupplier;
 import io.strimzi.operator.cluster.ResourceUtils;
 import io.strimzi.operator.cluster.operator.resource.ResourceOperatorSupplier;
-import io.strimzi.operator.cluster.stretch.spi.StretchNetworkingProvider;
 import io.strimzi.operator.common.InvalidConfigurationException;
 import io.strimzi.platform.KubernetesVersion;
 import io.strimzi.test.mockkube3.MockKube3;
@@ -28,9 +27,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -38,23 +34,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * Tests for StretchNetworkingProviderFactory.
  * 
  * This test class validates:
- * - Built-in provider creation (NodePort, LoadBalancer)
- * - Default provider selection
- * - Provider name normalization (case-insensitive, aliases)
- * - Error handling for invalid provider names
- * - Error handling for custom provider configuration
+ * - Plugin configuration validation
+ * - Error handling for missing/invalid configuration
+ * - Error messages are user-friendly and provide examples
  * 
- * Test Strategy:
- * - Tests factory pattern behavior
- * - Tests configuration validation
- * - Tests error messages are user-friendly
- * - Does NOT test custom plugin loading (requires external JARs)
+ * Note: All providers (NodePort, LoadBalancer, MCS, etc.) are external plugins.
+ * Strimzi-maintained providers (NodePort, LoadBalancer) live in a separate Strimzi repository.
+ * All providers use the same loading mechanism and environment variables.
  * 
  * @see StretchNetworkingProviderFactory
  */
 @Tag("stretch-cluster")
 @Tag("stretch-unit")
-
 @ExtendWith(VertxExtension.class)
 public class StretchNetworkingProviderFactoryTest {
     
@@ -125,200 +116,62 @@ public class StretchNetworkingProviderFactoryTest {
         );
     }
     
-    // ========== Built-in Provider Tests ==========
+    // ========== Configuration Validation Tests ==========
     
-    
-    public void testCreateNodePortProvider() {
+    @Test
+    public void testCreateWithoutPluginClassNameFails() {
 
-        ClusterOperatorConfig config = createOperatorConfig("nodeport");
+        ClusterOperatorConfig config = createOperatorConfigForCustomProvider(null, null);
         Map<String, String> providerConfig = new HashMap<>();
-        
 
-        StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
-            config, providerConfig, centralSupplier, remoteSupplier
-        );
+        // Should fail with helpful error message showing examples
+        InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
+            StretchNetworkingProviderFactory.create(
+                config, providerConfig, centralSupplier, remoteSupplier
+            );
+        });
         
-
-        assertThat("Provider should be created", provider, is(notNullValue()));
-        assertThat("Provider should be NodePortNetworkingProvider", 
-                  provider, instanceOf(NodePortNetworkingProvider.class));
-        assertThat("Provider name should be nodeport", 
-                  provider.getProviderName(), is("nodeport"));
+        assertThat("Exception should mention required configuration", 
+                  exception.getMessage(), containsString("STRIMZI_STRETCH_PLUGIN_CLASS_NAME"));
+        assertThat("Exception should provide NodePort example", 
+                  exception.getMessage(), containsString("NodePortNetworkingProvider"));
+        assertThat("Exception should provide LoadBalancer example", 
+                  exception.getMessage(), containsString("LoadBalancerNetworkingProvider"));
+        assertThat("Exception should provide MCS example", 
+                  exception.getMessage(), containsString("MCSNetworkingProvider"));
     }
     
-    
-    public void testCreateLoadBalancerProvider() {
+    @Test
+    public void testCreateWithEmptyClassNameFails() {
 
-        ClusterOperatorConfig config = createOperatorConfig("loadbalancer");
+        ClusterOperatorConfig config = createOperatorConfigForCustomProvider("", null);
         Map<String, String> providerConfig = new HashMap<>();
         
 
-        StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
-            config, providerConfig, centralSupplier, remoteSupplier
-        );
+        // Should fail with helpful error message
+        InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
+            StretchNetworkingProviderFactory.create(
+                config, providerConfig, centralSupplier, remoteSupplier
+            );
+        });
         
-
-        assertThat("Provider should be created", provider, is(notNullValue()));
-        assertThat("Provider should be LoadBalancerNetworkingProvider", 
-                  provider, instanceOf(LoadBalancerNetworkingProvider.class));
-        assertThat("Provider name should be loadbalancer", 
-                  provider.getProviderName(), is("loadbalancer"));
-    }
-    
-    
-    public void testCreateLoadBalancerProviderWithAlias() {
-        // Arrange - "lb" is an alias for "loadbalancer"
-        ClusterOperatorConfig config = createOperatorConfig("lb");
-        Map<String, String> providerConfig = new HashMap<>();
-        
-
-        StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
-            config, providerConfig, centralSupplier, remoteSupplier
-        );
-        
-
-        assertThat("Provider should be created", provider, is(notNullValue()));
-        assertThat("Provider should be LoadBalancerNetworkingProvider", 
-                  provider, instanceOf(LoadBalancerNetworkingProvider.class));
-    }
-    
-    // ========== Default Provider Tests ==========
-    
-    
-    public void testCreateWithNullProviderUsesDefault() {
-
-        ClusterOperatorConfig config = createOperatorConfig(null);
-        Map<String, String> providerConfig = new HashMap<>();
-        
-
-        StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
-            config, providerConfig, centralSupplier, remoteSupplier
-        );
-        
-
-        assertThat("Provider should be created", provider, is(notNullValue()));
-        assertThat("Should default to NodePort provider", 
-                  provider, instanceOf(NodePortNetworkingProvider.class));
-    }
-    
-    
-    public void testCreateWithEmptyProviderUsesDefault() {
-
-        ClusterOperatorConfig config = createOperatorConfig("");
-        Map<String, String> providerConfig = new HashMap<>();
-        
-
-        StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
-            config, providerConfig, centralSupplier, remoteSupplier
-        );
-        
-
-        assertThat("Provider should be created", provider, is(notNullValue()));
-        assertThat("Should default to NodePort provider", 
-                  provider, instanceOf(NodePortNetworkingProvider.class));
-    }
-    
-    // ========== Case Sensitivity Tests ==========
-    
-    
-    public void testProviderNameIsCaseInsensitive() {
-
-        ClusterOperatorConfig config = createOperatorConfig("NODEPORT");
-        Map<String, String> providerConfig = new HashMap<>();
-        
-
-        StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
-            config, providerConfig, centralSupplier, remoteSupplier
-        );
-        
-
-        assertThat("Provider should be created with uppercase name", 
-                  provider, is(notNullValue()));
-        assertThat("Provider should be NodePortNetworkingProvider", 
-                  provider, instanceOf(NodePortNetworkingProvider.class));
-    }
-    
-    
-    public void testProviderNameWithMixedCase() {
-
-        ClusterOperatorConfig config = createOperatorConfig("LoadBalancer");
-        Map<String, String> providerConfig = new HashMap<>();
-        
-
-        StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
-            config, providerConfig, centralSupplier, remoteSupplier
-        );
-        
-
-        assertThat("Provider should be created with mixed case name", 
-                  provider, is(notNullValue()));
-        assertThat("Provider should be LoadBalancerNetworkingProvider", 
-                  provider, instanceOf(LoadBalancerNetworkingProvider.class));
+        assertThat("Exception should mention required configuration", 
+                  exception.getMessage(), containsString("STRIMZI_STRETCH_PLUGIN_CLASS_NAME"));
+        assertThat("Exception should provide examples", 
+                  exception.getMessage(), containsString("Examples"));
     }
     
     // ========== Error Handling Tests ==========
     
     @Test
-    public void testCreateWithInvalidProviderName() {
-        // Arrange & Act & Assert
-        // Invalid provider name is rejected during config creation, not factory creation
-        InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
-            createOperatorConfig("invalid-provider");
-        });
-        
-        assertThat("Exception message should mention invalid provider", 
-                  exception.getMessage(), containsString("Invalid STRIMZI_STRETCH_NETWORK_PROVIDER"));
-        assertThat("Exception message should mention the invalid name", 
-                  exception.getMessage(), containsString("invalid-provider"));
-        assertThat("Exception message should list supported providers", 
-                  exception.getMessage(), containsString("nodeport"));
-    }
-    
-    @Test
-    public void testCreateCustomProviderWithoutClassName() {
-
-        ClusterOperatorConfig config = createOperatorConfigForCustomProvider(null, null);
-        Map<String, String> providerConfig = new HashMap<>();
-        
-        // Act & Assert
-        InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
-            StretchNetworkingProviderFactory.create(
-                config, providerConfig, centralSupplier, remoteSupplier
-            );
-        });
-        
-        assertThat("Exception message should mention missing class name", 
-                  exception.getMessage(), containsString("STRIMZI_STRETCH_PLUGIN_CLASS_NAME"));
-        assertThat("Exception message should provide example", 
-                  exception.getMessage(), containsString("Example:"));
-    }
-    
-    @Test
-    public void testCreateCustomProviderWithEmptyClassName() {
-
-        ClusterOperatorConfig config = createOperatorConfigForCustomProvider("", null);
-        Map<String, String> providerConfig = new HashMap<>();
-        
-        // Act & Assert
-        InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
-            StretchNetworkingProviderFactory.create(
-                config, providerConfig, centralSupplier, remoteSupplier
-            );
-        });
-        
-        assertThat("Exception message should mention missing class name", 
-                  exception.getMessage(), containsString("STRIMZI_STRETCH_PLUGIN_CLASS_NAME"));
-    }
-    
-    @Test
-    public void testCreateCustomProviderWithNonExistentClass() {
+    public void testCreateWithNonExistentClassFails() {
 
         ClusterOperatorConfig config = createOperatorConfigForCustomProvider(
             "com.example.NonExistentProvider", null
         );
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+        
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(
                 config, providerConfig, centralSupplier, remoteSupplier
@@ -334,26 +187,6 @@ public class StretchNetworkingProviderFactoryTest {
     // ========== Helper Methods ==========
     
     /**
-     * Creates a ClusterOperatorConfig with the specified network provider.
-     */
-    private ClusterOperatorConfig createOperatorConfig(String networkProvider) {
-        ClusterOperatorConfig.ClusterOperatorConfigBuilder builder = 
-            new ClusterOperatorConfig.ClusterOperatorConfigBuilder(
-                ResourceUtils.dummyClusterOperatorConfig(), 
-                KafkaVersionTestUtils.getKafkaVersionLookup())
-            .with("STRIMZI_CENTRAL_CLUSTER_ID", CENTRAL_CLUSTER_ID)
-            .with("STRIMZI_REMOTE_KUBE_CONFIG", 
-                REMOTE_CLUSTER_A_ID + ".url=https://api.cluster-a.example.com:6443\n" +
-                REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig");
-        
-        if (networkProvider != null) {
-            builder.with("STRIMZI_STRETCH_NETWORK_PROVIDER", networkProvider);
-        }
-        
-        return builder.build();
-    }
-    
-    /**
      * Creates a ClusterOperatorConfig for custom provider testing.
      */
     private ClusterOperatorConfig createOperatorConfigForCustomProvider(String className, String classPath) {
@@ -364,8 +197,7 @@ public class StretchNetworkingProviderFactoryTest {
             .with("STRIMZI_CENTRAL_CLUSTER_ID", CENTRAL_CLUSTER_ID)
             .with("STRIMZI_REMOTE_KUBE_CONFIG", 
                 REMOTE_CLUSTER_A_ID + ".url=https://api.cluster-a.example.com:6443\n" +
-                REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig")
-            .with("STRIMZI_STRETCH_NETWORK_PROVIDER", "custom");
+                REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig");
         
         if (className != null) {
             builder.with("STRIMZI_STRETCH_PLUGIN_CLASS_NAME", className);
