@@ -19,24 +19,35 @@ import java.util.Map;
  * deployed across multiple Kubernetes clusters. Different implementations provide
  * different approaches to cross-cluster communication.</p>
  *
- * <h2>Built-in Implementations</h2>
- * <p>Strimzi provides two built-in implementations:</p>
- * <ul>
- *   <li><b>NodePort</b> - Uses Kubernetes NodePort services (default, recommended for testing)</li>
- *   <li><b>LoadBalancer</b> - Uses Kubernetes LoadBalancer services (recommended for production)</li>
- * </ul>
+ * <h2>Plugin-Based Architecture</h2>
+ * <p>All networking providers are loaded as external plugins using the same mechanism.
+ * This includes Strimzi-maintained providers (NodePort, LoadBalancer) which live in a
+ * separate Strimzi repository, as well as third-party providers (e.g., MCS).</p>
  *
- * <h2>Custom Plugin Implementations</h2>
- * <p>Custom networking providers can be loaded at runtime as external plugins.
- * To use a custom provider, configure the cluster operator with:</p>
+ * <p><b>All providers require explicit configuration.</b> There is no default provider.</p>
+ *
+ * <p><b>Configuration Examples:</b></p>
  * <pre>{@code
+ * # NodePort provider (Strimzi-maintained)
  * env:
- * - name: STRIMZI_STRETCH_NETWORK_PROVIDER
- *   value: custom
  * - name: STRIMZI_STRETCH_PLUGIN_CLASS_NAME
- *   value: com.example.MyNetworkingProvider
+ *   value: io.strimzi.operator.cluster.stretch.NodePortNetworkingProvider
  * - name: STRIMZI_STRETCH_PLUGIN_CLASS_PATH
- *   value: /opt/strimzi/plugins/my-provider/*
+ *   value: /opt/strimzi/plugins/stretch-networking/*
+ *
+ * # LoadBalancer provider (Strimzi-maintained)
+ * env:
+ * - name: STRIMZI_STRETCH_PLUGIN_CLASS_NAME
+ *   value: io.strimzi.operator.cluster.stretch.LoadBalancerNetworkingProvider
+ * - name: STRIMZI_STRETCH_PLUGIN_CLASS_PATH
+ *   value: /opt/strimzi/plugins/stretch-networking/*
+ *
+ * # MCS provider (third-party)
+ * env:
+ * - name: STRIMZI_STRETCH_PLUGIN_CLASS_NAME
+ *   value: com.example.MCSNetworkingProvider
+ * - name: STRIMZI_STRETCH_PLUGIN_CLASS_PATH
+ *   value: /opt/strimzi/plugins/mcs/*
  * }</pre>
  *
  * <h2>Implementation Requirements</h2>
@@ -85,9 +96,7 @@ import java.util.Map;
  * }
  * }</pre>
  *
- * @since 0.46.0 (I will check this as this is not true ,but this is how we should document it)
- * @see io.strimzi.operator.cluster.stretch.NodePortNetworkingProvider
- * @see io.strimzi.operator.cluster.stretch.LoadBalancerNetworkingProvider
+ * @since 0.47.0
  */
 public interface StretchNetworkingProvider {
 

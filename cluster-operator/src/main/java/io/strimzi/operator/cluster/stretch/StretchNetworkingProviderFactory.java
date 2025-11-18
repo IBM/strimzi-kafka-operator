@@ -17,28 +17,33 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
  * Factory for creating StretchNetworkingProvider instances.
  *
- * <p>Supports two types of providers:</p>
- * <ul>
- *   <li><b>Built-in:</b> nodeport, loadbalancer (always available)</li>
- *   <li><b>Custom:</b> External plugins loaded via className + classPath</li>
- * </ul>
+ * <p>All networking providers are loaded as external plugins via className + classPath.
+ * This includes Strimzi-maintained providers (NodePort, LoadBalancer) which live in a
+ * separate Strimzi repository, as well as third-party providers (e.g., MCS).</p>
  *
  * <h2>Configuration</h2>
+ * <p>All providers require explicit configuration using the same environment variables:</p>
  * <pre>{@code
- * # Built-in provider
- * STRIMZI_STRETCH_NETWORK_PROVIDER=nodeport
+ * # NodePort provider (Strimzi-maintained)
+ * STRIMZI_STRETCH_PLUGIN_CLASS_NAME=io.strimzi.operator.cluster.stretch.NodePortNetworkingProvider
+ * STRIMZI_STRETCH_PLUGIN_CLASS_PATH=/opt/strimzi/plugins/stretch-networking/*
  *
- * # Custom plugin
- * STRIMZI_STRETCH_NETWORK_PROVIDER=custom
- * STRIMZI_STRETCH_PLUGIN_CLASS_NAME=com.example.MyProvider
- * STRIMZI_STRETCH_PLUGIN_CLASS_PATH=/opt/strimzi/plugins/*
+ * # LoadBalancer provider (Strimzi-maintained)
+ * STRIMZI_STRETCH_PLUGIN_CLASS_NAME=io.strimzi.operator.cluster.stretch.LoadBalancerNetworkingProvider
+ * STRIMZI_STRETCH_PLUGIN_CLASS_PATH=/opt/strimzi/plugins/stretch-networking/*
+ *
+ * # MCS provider (third-party)
+ * STRIMZI_STRETCH_PLUGIN_CLASS_NAME=com.example.MCSNetworkingProvider
+ * STRIMZI_STRETCH_PLUGIN_CLASS_PATH=/opt/strimzi/plugins/mcs/*
  * }</pre>
+ *
+ * <p><b>Note:</b> All providers use the same loading mechanism and environment variables.
+ * There is no default provider - configuration is required.</p>
  *
  * @since 0.47.0
  */
@@ -73,84 +78,39 @@ public final class StretchNetworkingProviderFactory {
             final ResourceOperatorSupplier centralSupplier,
             final RemoteResourceOperatorSupplier remoteResourceOperatorSupplier) {
 
-        String providerName = operatorConfig.getStretchNetworkProvider();
-        if (providerName == null || providerName.isEmpty()) {
-            providerName = "nodeport";  // Default
-            LOGGER.info("No stretch network provider specified, using default: nodeport");
+        String className = operatorConfig.getStretchPluginClassName();
+        String classPath = operatorConfig.getStretchPluginClassPath();
+
+        // All providers require explicit configuration
+        if (className == null || className.isEmpty()) {
+            throw new InvalidConfigurationException(
+                "Stretch networking requires a plugin to be configured. " +
+                "Please set STRIMZI_STRETCH_PLUGIN_CLASS_NAME and STRIMZI_STRETCH_PLUGIN_CLASS_PATH. " +
+                "Examples:\n" +
+                "  NodePort: STRIMZI_STRETCH_PLUGIN_CLASS_NAME=io.strimzi.operator.cluster.stretch.NodePortNetworkingProvider\n" +
+                "  LoadBalancer: STRIMZI_STRETCH_PLUGIN_CLASS_NAME=io.strimzi.operator.cluster.stretch.LoadBalancerNetworkingProvider\n" +
+                "  MCS: STRIMZI_STRETCH_PLUGIN_CLASS_NAME=com.example.MCSNetworkingProvider");
         }
 
-        return create(providerName, operatorConfig, config, centralSupplier, remoteResourceOperatorSupplier);
-    }
-
-    /**
-     * Create a networking provider based on the provider name.
-     *
-     * @param providerName Provider name ("nodeport", "loadbalancer", "mcs", or "custom")
-     * @param operatorConfig Cluster operator configuration
-     * @param config Provider-specific configuration
-     * @param centralSupplier ResourceOperatorSupplier for central cluster
-     * @param remoteResourceOperatorSupplier Supplier for remote cluster operators
-     * @return Initialized provider
-     * @throws InvalidConfigurationException if provider name is invalid
-     */
-    private static StretchNetworkingProvider create(
-            final String providerName,
-            final ClusterOperatorConfig operatorConfig,
-            final Map<String, String> config,
-            final ResourceOperatorSupplier centralSupplier,
-            final RemoteResourceOperatorSupplier remoteResourceOperatorSupplier) {
-
-        LOGGER.info("Creating stretch networking provider: {}", providerName);
-
-        StretchNetworkingProvider provider;
-        String providerLower = providerName.toLowerCase(Locale.ROOT);
-
-        switch (providerLower) {
-            case "nodeport":
-                LOGGER.info("Using built-in NodePort networking provider");
-                provider = new NodePortNetworkingProvider();
-                break;
-
-            case "loadbalancer":
-            case "lb":
-                LOGGER.info("Using built-in LoadBalancer networking provider");
-                provider = new LoadBalancerNetworkingProvider();
-                break;
-
-            case "custom":
-                String className = operatorConfig.getStretchPluginClassName();
-                String classPath = operatorConfig.getStretchPluginClassPath();
-
-                if (className == null || className.isEmpty()) {
-                    throw new InvalidConfigurationException(
-                        "Custom stretch network provider requires STRIMZI_STRETCH_PLUGIN_CLASS_NAME. " +
-                        "Example: STRIMZI_STRETCH_PLUGIN_CLASS_NAME=com.example.MyNetworkingProvider");
-                }
-
-                LOGGER.info("Loading custom networking provider: {} from {}",
-                           className, classPath != null ? classPath : "default classpath");
-                provider = loadCustomProvider(className, classPath);
-                break;
-
-            default:
-                throw new InvalidConfigurationException(
-                    "Unknown stretch network provider: '" + providerName + "'. " +
-                    "Supported: nodeport, loadbalancer, custom");
-        }
-
+        LOGGER.info("Loading stretch networking provider: {} from {}",
+                   className, classPath != null ? classPath : "default classpath");
+        
+        StretchNetworkingProvider provider = loadCustomProvider(className, classPath);
+        
         // Initialize the provider
         try {
             provider.init(config, centralSupplier, remoteResourceOperatorSupplier)
                     .toCompletionStage().toCompletableFuture().get();
-            LOGGER.info("Provider '{}' initialized successfully",
+            LOGGER.info("Stretch networking provider '{}' initialized successfully",
                     provider.getProviderName());
         } catch (Exception e) {
             throw new InvalidConfigurationException(
-                    "Failed to initialize provider '" + providerName + "': " + e.getMessage(), e);
+                    "Failed to initialize stretch networking provider '" + className + "': " + e.getMessage(), e);
         }
 
         return provider;
     }
+
 
     /**
      * Load a custom provider by class name with optional custom classpath.
