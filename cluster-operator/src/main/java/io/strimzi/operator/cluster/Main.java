@@ -108,7 +108,9 @@ public class Main {
                                     config,
                                     shutdownHook,
                                     stretchResult.getRemotePfas(),
-                                    stretchResult.getRemoteResourceOperatorSupplier()
+                                    stretchResult.getRemoteResourceOperatorSupplier(),
+                                    stretchResult.envConfigsValid(),
+                                    stretchResult.remoteKubeConfigsValid()
                                 );
                             })
                             .mapEmpty();
@@ -207,9 +209,10 @@ public class Main {
      *
      * @return  Future which completes when all Cluster Operator verticles are started and running
      */
-    static CompositeFuture deployClusterOperatorVerticles(Vertx vertx, KubernetesClient client, RemoteClientSupplier remoteClientSupplier, MetricsProvider metricsProvider, PlatformFeaturesAvailability pfa, ClusterOperatorConfig config, ShutdownHook shutdownHook, Map<String, PlatformFeaturesAvailability> remotePfas, RemoteResourceOperatorSupplier remoteResourceOperatorSupplier) {
+    static CompositeFuture deployClusterOperatorVerticles(Vertx vertx, KubernetesClient client, RemoteClientSupplier remoteClientSupplier, MetricsProvider metricsProvider, PlatformFeaturesAvailability pfa, ClusterOperatorConfig config, ShutdownHook shutdownHook, Map<String, PlatformFeaturesAvailability> remotePfas, RemoteResourceOperatorSupplier remoteResourceOperatorSupplier, boolean envConfigsValid, boolean remoteKubeConfigsValid) {
         // Create ResourceOperatorSupplier with remote cluster support
         // Pass empty map and null if no remote clusters configured
+        
         ResourceOperatorSupplier resourceOperatorSupplier = new ResourceOperatorSupplier(
                 vertx,
                 client,
@@ -239,8 +242,8 @@ public class Main {
 
             kafkaClusterOperations = new KafkaAssemblyOperator(vertx, pfa, certManager, passwordGenerator, resourceOperatorSupplier, config);
             // Add stretch capabilities if configured
-            if (remoteResourceOperatorSupplier != null) {
-                kafkaClusterOperations = kafkaClusterOperations.withStretchCapabilities(remoteResourceOperatorSupplier, remotePfas);
+            if (envConfigsValid) {
+                kafkaClusterOperations = kafkaClusterOperations.withStretchCapabilities(remoteResourceOperatorSupplier, remotePfas, remoteKubeConfigsValid);
             }
             kafkaConnectClusterOperations = new KafkaConnectAssemblyOperator(vertx, pfa, resourceOperatorSupplier, config);
             kafkaMirrorMaker2AssemblyOperator = new KafkaMirrorMaker2AssemblyOperator(vertx, pfa, resourceOperatorSupplier, config);

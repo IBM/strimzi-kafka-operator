@@ -10,7 +10,6 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.strimzi.api.kafka.model.kafka.Kafka;
 import io.strimzi.api.kafka.model.nodepool.KafkaNodePool;
 import io.strimzi.operator.cluster.stretch.util.StretchTestFixtures;
-import io.strimzi.operator.common.Reconciliation;
 import io.strimzi.test.mockkube3.MockKube3;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
@@ -344,10 +343,8 @@ public class StretchClusterValidatorTest {
         Map<String, KubernetesClient> clusterClients = Map.of(
             CENTRAL_CLUSTER_ID, client
         );
-        Reconciliation reconciliation = new Reconciliation("test", "Kafka", NAMESPACE, "my-cluster");
-        
 
-        validator.validateRuntimeConnectivity(reconciliation, clusterClients)
+        validator.validateRuntimeConnectivity(clusterClients)
             .onComplete(context.succeeding(result -> context.verify(() -> {
         
                 assertThat("Connectivity validation should succeed", 
@@ -365,10 +362,8 @@ public class StretchClusterValidatorTest {
         Map<String, KubernetesClient> clusterClients = Map.of(
             CENTRAL_CLUSTER_ID, client
         );
-        Reconciliation reconciliation = new Reconciliation("test", "Kafka", NAMESPACE, "my-cluster");
-        
 
-        validator.validateRuntimeConnectivity(reconciliation, clusterClients)
+        validator.validateRuntimeConnectivity(clusterClients)
             .onComplete(context.succeeding(result -> context.verify(() -> {
         
                 assertThat("Connectivity validation should fail", 
@@ -400,10 +395,8 @@ public class StretchClusterValidatorTest {
             CENTRAL_CLUSTER_ID, client,
             REMOTE_CLUSTER_A_ID, remoteClientA
         );
-        Reconciliation reconciliation = new Reconciliation("test", "Kafka", NAMESPACE, "my-cluster");
-        
 
-        validator.validateRuntimeConnectivity(reconciliation, clusterClients)
+        validator.validateRuntimeConnectivity(clusterClients)
             .onComplete(context.succeeding(result -> context.verify(() -> {
         
                 assertThat("Connectivity validation should succeed for multiple clusters", 
