@@ -143,8 +143,9 @@ public class StretchClusterValidator {
                     + "'%s', but required environment variables are not "
                     + "properly configured. Required: "
                     + "STRIMZI_REMOTE_KUBE_CONFIG, "
-                    + "STRIMZI_CENTRAL_CLUSTER_ID. Optional: "
-                    + "STRIMZI_STRETCH_NETWORK_PROVIDER (defaults to 'mcs')",
+                    + "STRIMZI_CENTRAL_CLUSTER_ID. "
+                    + "STRIMZI_STRETCH_PLUGIN_CLASS_NAME"
+                    + "STRIMZI_STRETCH_PLUGIN_CLASS_PATH",
                     kafkaName)
             );
         }

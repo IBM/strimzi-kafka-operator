@@ -354,20 +354,8 @@ public class ClusterOperatorConfig {
 
     public static ClusterOperatorConfig buildFromMap(Map<String, String> map) {
         warningsForRemovedEndVars(map);
-        StretchClusterConfig.validateConfiguration(map); // Validate stretch config
         KafkaVersion.Lookup lookup = parseKafkaVersions(map.get(STRIMZI_KAFKA_IMAGES), map.get(STRIMZI_KAFKA_CONNECT_IMAGES), map.get(STRIMZI_KAFKA_MIRROR_MAKER_2_IMAGES));
         return buildFromMap(map, lookup);
-
-    }
-
-    /**
-     * Validates that both STRIMZI_REMOTE_KUBE_CONFIG and STRIMZI_CENTRAL_CLUSTER_ID
-     * are set.
-     *
-     * @return boolean indicating if valid stretch cluster configuration is set
-     */
-    public boolean isStretchClusterConfigurationValid() {
-        return stretchConfig != null && stretchConfig.isValid();
     }
 
     /**
@@ -414,6 +402,7 @@ public class ClusterOperatorConfig {
                 envMap.put(entry.getKey(), (String) entry.getValue());
             }
         }
+
         this.stretchConfig = StretchClusterConfig.fromEnvironment(envMap);
     }
 
@@ -699,7 +688,7 @@ public class ClusterOperatorConfig {
      * @return true if both central cluster ID and remote kube config are set
      */
     public boolean isStretchClusterConfigured() {
-        return stretchConfig != null && stretchConfig.isValid();
+        return stretchConfig != null;
     }
 
     /**
