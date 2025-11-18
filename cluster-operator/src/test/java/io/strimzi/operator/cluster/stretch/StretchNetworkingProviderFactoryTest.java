@@ -120,11 +120,10 @@ public class StretchNetworkingProviderFactoryTest {
     
     @Test
     public void testCreateWithoutPluginClassNameFails() {
-        // Arrange - No plugin className specified
+
         ClusterOperatorConfig config = createOperatorConfigForCustomProvider(null, null);
         Map<String, String> providerConfig = new HashMap<>();
-        
-        // Act & Assert
+
         // Should fail with helpful error message showing examples
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(
@@ -144,11 +143,11 @@ public class StretchNetworkingProviderFactoryTest {
     
     @Test
     public void testCreateWithEmptyClassNameFails() {
-        // Arrange - Empty plugin className
+
         ClusterOperatorConfig config = createOperatorConfigForCustomProvider("", null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         // Should fail with helpful error message
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(
@@ -166,13 +165,13 @@ public class StretchNetworkingProviderFactoryTest {
     
     @Test
     public void testCreateWithNonExistentClassFails() {
-        // Arrange
+
         ClusterOperatorConfig config = createOperatorConfigForCustomProvider(
             "com.example.NonExistentProvider", null
         );
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+        
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(
                 config, providerConfig, centralSupplier, remoteSupplier

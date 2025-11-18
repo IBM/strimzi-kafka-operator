@@ -45,7 +45,7 @@ import java.util.Map;
  * <p><b>Note:</b> All providers use the same loading mechanism and environment variables.
  * There is no default provider - configuration is required.</p>
  *
- * @since 0.47.0
+ * @since 0.48.0
  */
 public final class StretchNetworkingProviderFactory {
 

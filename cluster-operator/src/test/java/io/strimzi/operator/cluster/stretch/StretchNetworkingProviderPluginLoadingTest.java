@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -130,11 +129,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testNullClassNameThrowsExceptionWithExamples() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(null, null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -154,11 +153,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testEmptyClassNameThrowsException() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig("", null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -169,11 +168,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testWhitespaceOnlyClassNameThrowsException() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig("   ", null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert - whitespace is trimmed by config, so treated as empty
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -186,11 +185,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testNonExistentClassThrowsException() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig("com.example.NonExistentProvider", null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -203,11 +202,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testInvalidPackageNameThrowsException() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig("invalid..package.Provider", null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -218,11 +217,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testClassWithoutPackageThrowsException() {
-        // Arrange - Class name without package (e.g., "MyProvider" instead of "com.example.MyProvider")
+
         ClusterOperatorConfig config = createConfig("MyProvider", null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -235,11 +234,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testInvalidClassPathThrowsException() {
-        // Arrange - Invalid classpath format
+
         ClusterOperatorConfig config = createConfig("com.example.Provider", "not-a-valid-path");
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -251,11 +250,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testNonExistentClassPathThrowsException() {
-        // Arrange - Classpath that doesn't exist
+
         ClusterOperatorConfig config = createConfig("com.example.Provider", "/non/existent/path/*");
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -271,14 +270,14 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testProviderInitializationFailureIsReported() {
-        // Arrange - Use a test provider that fails initialization
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.StretchNetworkingProviderPluginLoadingTest$FailingInitProvider", 
             null
         );
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -297,7 +296,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
         // In a real scenario, the provider would use this config
         // Here we just verify the mechanism doesn't fail with valid config
         
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.StretchNetworkingProviderPluginLoadingTest$TestProvider", 
             null
@@ -306,7 +305,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
         providerConfig.put("test.key", "test.value");
         providerConfig.put("another.key", "another.value");
         
-        // Act & Assert
+
         // Should fail because TestProvider doesn't exist in classpath, but validates config passing
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
@@ -320,16 +319,16 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testErrorMessagesAreActionable() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(null, null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
         
-        // Assert - Error message should guide user to solution
+
         String message = exception.getMessage();
         assertThat("Should explain what's wrong", message, containsString("requires a plugin"));
         assertThat("Should tell user what to do", message, containsString("Please set"));
@@ -340,16 +339,16 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testErrorMessageShowsAllProviderTypes() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(null, null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
         
-        // Assert - Should show examples for all provider types
+
         String message = exception.getMessage();
         assertThat("Should show NodePort (Strimzi-maintained)", 
                   message, containsString("NodePort"));
@@ -363,12 +362,12 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testVeryLongClassNameIsHandled() {
-        // Arrange - Unreasonably long class name
+
         String longClassName = "com.example." + "VeryLong".repeat(50) + "Provider";
         ClusterOperatorConfig config = createConfig(longClassName, null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });
@@ -380,11 +379,11 @@ public class StretchNetworkingProviderPluginLoadingTest {
     
     @Test
     public void testSpecialCharactersInClassNameAreHandled() {
-        // Arrange - Class name with special characters (invalid but should be handled)
+
         ClusterOperatorConfig config = createConfig("com.example.Provider$Inner", null);
         Map<String, String> providerConfig = new HashMap<>();
         
-        // Act & Assert
+
         InvalidConfigurationException exception = assertThrows(InvalidConfigurationException.class, () -> {
             StretchNetworkingProviderFactory.create(config, providerConfig, centralSupplier, remoteSupplier);
         });

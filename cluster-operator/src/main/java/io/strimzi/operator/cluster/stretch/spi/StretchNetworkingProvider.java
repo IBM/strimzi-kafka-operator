@@ -96,7 +96,7 @@ import java.util.Map;
  * }
  * }</pre>
  *
- * @since 0.47.0
+ * @since 0.48.0
  */
 public interface StretchNetworkingProvider {
 

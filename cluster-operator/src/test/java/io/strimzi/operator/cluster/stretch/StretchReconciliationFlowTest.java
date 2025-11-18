@@ -4,8 +4,6 @@
  */
 package io.strimzi.operator.cluster.stretch;
 
-import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -15,17 +13,13 @@ import io.strimzi.api.kafka.model.kafka.PersistentClaimStorageBuilder;
 import io.strimzi.api.kafka.model.nodepool.KafkaNodePool;
 import io.strimzi.api.kafka.model.nodepool.KafkaNodePoolBuilder;
 import io.strimzi.api.kafka.model.nodepool.ProcessRoles;
-import io.strimzi.operator.cluster.ClusterOperatorConfig;
-import io.strimzi.operator.cluster.KafkaVersionTestUtils;
 import io.strimzi.operator.cluster.PlatformFeaturesAvailability;
 import io.strimzi.operator.cluster.RemoteClientSupplier;
-import io.strimzi.operator.cluster.ResourceUtils;
 import io.strimzi.operator.cluster.operator.resource.ResourceOperatorSupplier;
 import io.strimzi.platform.KubernetesVersion;
 import io.strimzi.test.mockkube3.MockKube3;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -169,7 +163,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Kafka and KafkaNodePool CRs applied with correct annotations"
         // Expected: "Reconciliation should progress and pods should be up and running"
         
-        // Arrange
+
         Kafka kafka = createStretchKafkaCluster();
         KafkaNodePool brokerPool = createBrokerNodePool(CENTRAL_CLUSTER_ID, 2);
         KafkaNodePool controllerPool = createControllerNodePool(REMOTE_CLUSTER_A_ID, 3);
@@ -200,7 +194,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Scale broker pods up"
         // Expected: "New pods should get registered"
         
-        // Arrange
+
         KafkaNodePool brokerPool = createBrokerNodePool(CENTRAL_CLUSTER_ID, 2);
         
         // Act - Scale up from 2 to 4 replicas
@@ -223,7 +217,7 @@ public class StretchReconciliationFlowTest {
         // Expected: "Pods should be unregistered"
         // Note: KRaft controllers can scale down if quorum is maintained
         
-        // Arrange
+
         KafkaNodePool controllerPool = createControllerNodePool(CENTRAL_CLUSTER_ID, 5);
         
         // Act - Scale down from 5 to 3 (maintaining quorum)
@@ -247,7 +241,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Pause Reconciliation"
         // Expected: "Nothing should happen when Reconciliation is paused"
         
-        // Arrange
+
         Kafka kafka = createStretchKafkaCluster();
         
         // Act - Add pause annotation
@@ -268,7 +262,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Resume Reconciliation by removing the annotation"
         // Expected: "Changes made during pause should get executed"
         
-        // Arrange
+
         Kafka kafka = createStretchKafkaCluster();
         Kafka pausedKafka = new KafkaBuilder(kafka)
             .editMetadata()
@@ -300,7 +294,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Test Stretch cluster with Persistence"
         // Expected: "Should work with PVCs"
         
-        // Arrange & Act
+
         Kafka kafka = new KafkaBuilder(createStretchKafkaCluster())
             .editSpec()
                 .editKafka()
@@ -325,7 +319,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Test Stretch cluster with Rack awareness"
         // Expected: "Should work with rack configuration"
         
-        // Arrange & Act
+
         Kafka kafka = new KafkaBuilder(createStretchKafkaCluster())
             .editSpec()
                 .editKafka()
@@ -351,7 +345,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Create Kafka cluster with dual mode pods (broker + controller)"
         // Expected: "Should work"
         
-        // Arrange & Act
+
         KafkaNodePool dualModePool = new KafkaNodePoolBuilder()
             .withNewMetadata()
                 .withName("dual-mode")
@@ -389,7 +383,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "spec.kafka.config gets correctly passed to configmaps of each pod"
         // Expected: "All the configuration must be passed to the broker configmaps"
         
-        // Arrange
+
         Map<String, Object> kafkaConfig = new HashMap<>();
         kafkaConfig.put("num.partitions", 3);
         kafkaConfig.put("default.replication.factor", 3);
@@ -421,7 +415,7 @@ public class StretchReconciliationFlowTest {
         // Manual Test: "Regular kafka cluster"
         // Expected: "Pods should come up, No errors, No resources in the remote clusters"
         
-        // Arrange & Act - Create Kafka WITHOUT stretch annotations
+        // Create Kafka WITHOUT stretch annotations
         Kafka regularKafka = new KafkaBuilder()
             .withNewMetadata()
                 .withName(CLUSTER_NAME)

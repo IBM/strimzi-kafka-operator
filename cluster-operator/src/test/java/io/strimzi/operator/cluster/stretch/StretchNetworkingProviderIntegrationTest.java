@@ -49,7 +49,6 @@ import static org.hamcrest.Matchers.hasSize;
  * - Generating Kafka configuration
  * - Deleting resources
  * 
- * Uses TestNetworkingProvider which is a real, working implementation.
  * 
  * @see StretchNetworkingProviderFactory
  * @see TestNetworkingProvider
@@ -146,7 +145,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testLoadPluginFromClasspath(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -154,7 +153,7 @@ public class StretchNetworkingProviderIntegrationTest {
         Map<String, String> providerConfig = new HashMap<>();
         providerConfig.put("test.key", "test.value");
         
-        // Act & Assert
+
         context.verify(() -> {
             StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
                 config, providerConfig, centralSupplier, remoteSupplier
@@ -166,7 +165,7 @@ public class StretchNetworkingProviderIntegrationTest {
             assertThat("Provider name should be correct", 
                       provider.getProviderName(), is("test-provider"));
             
-            // Verify initialization
+ 
             TestNetworkingProvider testProvider = (TestNetworkingProvider) provider;
             assertThat("Provider should be initialized", testProvider.isInitialized(), is(true));
             assertThat("Config should be passed", testProvider.getConfig(), is(notNullValue()));
@@ -181,18 +180,18 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testProviderInitializationWithSuppliers(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
         );
         
-        // Act
+
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
         );
         
-        // Assert
+
         context.verify(() -> {
             TestNetworkingProvider testProvider = (TestNetworkingProvider) provider;
             assertThat("Provider should be initialized", testProvider.isInitialized(), is(true));
@@ -205,7 +204,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testCreateNetworkingResources(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -220,10 +219,10 @@ public class StretchNetworkingProviderIntegrationTest {
         ports.put("replication", 9091);
         ports.put("controller", 9093);
         
-        // Act
+
         provider.createNetworkingResources(reconciliation, TEST_NAMESPACE, podName, CENTRAL_CLUSTER_ID, ports)
             .onComplete(context.succeeding(resources -> context.verify(() -> {
-                // Assert
+        
                 assertThat("Should create resources", resources, is(notNullValue()));
                 assertThat("Should create at least one resource", resources.size(), greaterThan(0));
                 
@@ -245,7 +244,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testDiscoverPodEndpoint(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -257,10 +256,10 @@ public class StretchNetworkingProviderIntegrationTest {
         Reconciliation reconciliation = new Reconciliation("test", "Kafka", TEST_NAMESPACE, TEST_CLUSTER_NAME);
         String serviceName = TEST_CLUSTER_NAME + "-kafka-0-svc";
         
-        // Act
+
         provider.discoverPodEndpoint(reconciliation, TEST_NAMESPACE, serviceName, CENTRAL_CLUSTER_ID, "replication")
             .onComplete(context.succeeding(endpoint -> context.verify(() -> {
-                // Assert
+        
                 assertThat("Endpoint should be returned", endpoint, is(notNullValue()));
                 assertThat("Endpoint should contain service name", endpoint, containsString(serviceName));
                 assertThat("Endpoint should contain namespace", endpoint, containsString(TEST_NAMESPACE));
@@ -274,7 +273,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testGenerateServiceDnsName() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -285,10 +284,10 @@ public class StretchNetworkingProviderIntegrationTest {
         
         String serviceName = TEST_CLUSTER_NAME + "-kafka-bootstrap";
         
-        // Act
+
         String dnsName = provider.generateServiceDnsName(TEST_NAMESPACE, serviceName, CENTRAL_CLUSTER_ID);
         
-        // Assert
+
         assertThat("DNS name should be generated", dnsName, is(notNullValue()));
         assertThat("DNS name should contain service name", dnsName, containsString(serviceName));
         assertThat("DNS name should contain namespace", dnsName, containsString(TEST_NAMESPACE));
@@ -297,7 +296,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testGeneratePodDnsName() {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -309,10 +308,10 @@ public class StretchNetworkingProviderIntegrationTest {
         String podName = TEST_CLUSTER_NAME + "-kafka-0";
         String serviceName = TEST_CLUSTER_NAME + "-kafka-0-svc";
         
-        // Act
+
         String dnsName = provider.generatePodDnsName(TEST_NAMESPACE, serviceName, podName, CENTRAL_CLUSTER_ID);
         
-        // Assert
+
         assertThat("DNS name should be generated", dnsName, is(notNullValue()));
         assertThat("DNS name should contain pod name", dnsName, containsString(podName));
         assertThat("DNS name should contain namespace", dnsName, containsString(TEST_NAMESPACE));
@@ -323,7 +322,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testGenerateAdvertisedListeners(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -338,10 +337,10 @@ public class StretchNetworkingProviderIntegrationTest {
         listeners.put("REPLICATION-9091", "replication");
         listeners.put("PLAIN-9092", "plain");
         
-        // Act
+
         provider.generateAdvertisedListeners(reconciliation, TEST_NAMESPACE, podName, CENTRAL_CLUSTER_ID, listeners)
             .onComplete(context.succeeding(advertisedListeners -> context.verify(() -> {
-                // Assert
+        
                 assertThat("Advertised listeners should be generated", advertisedListeners, is(notNullValue()));
                 assertThat("Should contain REPLICATION listener", 
                           advertisedListeners, containsString("REPLICATION-9091://"));
@@ -356,7 +355,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testGenerateQuorumVoters(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -372,10 +371,10 @@ public class StretchNetworkingProviderIntegrationTest {
             new StretchNetworkingProvider.ControllerPodInfo(2, TEST_CLUSTER_NAME + "-kafka-2", REMOTE_CLUSTER_B_ID)
         );
         
-        // Act
+
         provider.generateQuorumVoters(reconciliation, TEST_NAMESPACE, controllerPods, "replication")
             .onComplete(context.succeeding(quorumVoters -> context.verify(() -> {
-                // Assert
+        
                 assertThat("Quorum voters should be generated", quorumVoters, is(notNullValue()));
                 assertThat("Should contain node 0", quorumVoters, containsString("0@"));
                 assertThat("Should contain node 1", quorumVoters, containsString("1@"));
@@ -391,7 +390,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testGenerateCertificateSans(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -403,10 +402,10 @@ public class StretchNetworkingProviderIntegrationTest {
         Reconciliation reconciliation = new Reconciliation("test", "Kafka", TEST_NAMESPACE, TEST_CLUSTER_NAME);
         String podName = TEST_CLUSTER_NAME + "-kafka-0";
         
-        // Act
+
         provider.generateCertificateSans(reconciliation, TEST_NAMESPACE, podName, CENTRAL_CLUSTER_ID)
             .onComplete(context.succeeding(sans -> context.verify(() -> {
-                // Assert
+        
                 assertThat("SANs should be generated", sans, is(notNullValue()));
                 assertThat("Should have at least one SAN", sans.size(), greaterThan(0));
                 assertThat("SANs should contain DNS names", 
@@ -420,7 +419,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testDeleteNetworkingResources(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -432,10 +431,10 @@ public class StretchNetworkingProviderIntegrationTest {
         Reconciliation reconciliation = new Reconciliation("test", "Kafka", TEST_NAMESPACE, TEST_CLUSTER_NAME);
         String podName = TEST_CLUSTER_NAME + "-kafka-0";
         
-        // Act
+
         provider.deleteNetworkingResources(reconciliation, TEST_NAMESPACE, podName, CENTRAL_CLUSTER_ID)
             .onComplete(context.succeeding(v -> context.verify(() -> {
-                // Assert - deletion should succeed
+
                 context.completeNow();
             })));
     }
@@ -444,7 +443,7 @@ public class StretchNetworkingProviderIntegrationTest {
     
     @Test
     public void testProviderWorksWithMultipleClusters(VertxTestContext context) {
-        // Arrange
+
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
             null
@@ -454,8 +453,7 @@ public class StretchNetworkingProviderIntegrationTest {
         );
         
         Reconciliation reconciliation = new Reconciliation("test", "Kafka", TEST_NAMESPACE, TEST_CLUSTER_NAME);
-        
-        // Act - Create resources in different clusters
+
         Map<String, Integer> ports = Map.of("replication", 9091);
         
         provider.createNetworkingResources(reconciliation, TEST_NAMESPACE, 
@@ -465,7 +463,6 @@ public class StretchNetworkingProviderIntegrationTest {
             .compose(r2 -> provider.createNetworkingResources(reconciliation, TEST_NAMESPACE, 
                 TEST_CLUSTER_NAME + "-kafka-2", REMOTE_CLUSTER_B_ID, ports))
             .onComplete(context.succeeding(resources -> context.verify(() -> {
-                // Assert - All resources should be created
                 assertThat("Resources should be created", resources, is(notNullValue()));
                 context.completeNow();
             })));
