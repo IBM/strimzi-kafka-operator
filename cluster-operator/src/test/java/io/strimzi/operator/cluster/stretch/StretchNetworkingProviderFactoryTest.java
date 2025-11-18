@@ -167,7 +167,7 @@ public class StretchNetworkingProviderFactoryTest {
     public void testCreateWithNonExistentClassFails() {
 
         ClusterOperatorConfig config = createOperatorConfigForCustomProvider(
-            "com.example.NonExistentProvider", null
+            "com.example.NonExistentProvider", "" // Empty string means use default classpath
         );
         Map<String, String> providerConfig = new HashMap<>();
         
@@ -197,7 +197,8 @@ public class StretchNetworkingProviderFactoryTest {
             .with("STRIMZI_CENTRAL_CLUSTER_ID", CENTRAL_CLUSTER_ID)
             .with("STRIMZI_REMOTE_KUBE_CONFIG", 
                 REMOTE_CLUSTER_A_ID + ".url=https://api.cluster-a.example.com:6443\n" +
-                REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig");
+                REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig")
+            .with("STRIMZI_STRETCH_NETWORK_PROVIDER", "custom"); // Required - no defaults
         
         if (className != null) {
             builder.with("STRIMZI_STRETCH_PLUGIN_CLASS_NAME", className);
