@@ -158,9 +158,9 @@ public class KafkaPoolTest {
 
         Set<NodeRef> nodes = kp.nodes();
         assertThat(nodes.size(), is(3));
-        assertThat(nodes, hasItems(new NodeRef(KafkaResources.kafkaPodName(CLUSTER_NAME, 10), 10, "pool", "my-cluster-id", false, true),
-                new NodeRef(KafkaResources.kafkaPodName(CLUSTER_NAME, 11), 11, "pool", "my-cluster-id", false, true),
-                new NodeRef(KafkaResources.kafkaPodName(CLUSTER_NAME, 13), 13, "pool", "my-cluster-id", false, true)));
+        assertThat(nodes, hasItems(new NodeRef(CLUSTER_NAME + "-pool-10", 10, "pool", true, false),
+                new NodeRef(CLUSTER_NAME + "-pool-11", 11, "pool", true, false),
+                new NodeRef(CLUSTER_NAME + "-pool-13", 13, "pool", true, false)));
     }
 
     @Test
