@@ -253,7 +253,7 @@ public class ClusterCa extends Ca {
         Map<String, CertAndKey> existingCertificates,
         boolean isMaintenanceTimeWindowsSatisfied
     ) throws IOException {
-        return maybeCopyOrGenerateCerts(reconciliation, nodes, subjectFn, existingCertificates, isMaintenanceTimeWindowsSatisfied);
+        return maybeCopyOrGenerateCerts(reconciliation, nodes, subjectFn, existingCertificates, isMaintenanceTimeWindowsSatisfied, null);
     }
 
     /**
