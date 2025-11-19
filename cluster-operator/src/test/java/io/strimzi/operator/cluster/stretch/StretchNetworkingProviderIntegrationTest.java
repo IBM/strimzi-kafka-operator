@@ -148,7 +148,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         Map<String, String> providerConfig = new HashMap<>();
         providerConfig.put("test.key", "test.value");
@@ -183,7 +183,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         
 
@@ -207,7 +207,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -247,7 +247,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -276,7 +276,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -299,7 +299,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -325,7 +325,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -358,7 +358,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -393,7 +393,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -422,7 +422,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -446,7 +446,7 @@ public class StretchNetworkingProviderIntegrationTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.TestNetworkingProvider",
-            null
+            ""
         );
         StretchNetworkingProvider provider = StretchNetworkingProviderFactory.create(
             config, new HashMap<>(), centralSupplier, remoteSupplier
@@ -480,7 +480,8 @@ public class StretchNetworkingProviderIntegrationTest {
                 REMOTE_CLUSTER_A_ID + ".url=https://api.cluster-a.example.com:6443\n" +
                 REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig\n" +
                 REMOTE_CLUSTER_B_ID + ".url=https://api.cluster-b.example.com:6443\n" +
-                REMOTE_CLUSTER_B_ID + ".secret=cluster-b-kubeconfig");
+                REMOTE_CLUSTER_B_ID + ".secret=cluster-b-kubeconfig")
+            .with("STRIMZI_STRETCH_NETWORK_PROVIDER", "custom"); // Required - no defaults
         
         if (className != null) {
             builder.with("STRIMZI_STRETCH_PLUGIN_CLASS_NAME", className);

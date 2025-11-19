@@ -186,7 +186,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
     @Test
     public void testNonExistentClassThrowsException() {
 
-        ClusterOperatorConfig config = createConfig("com.example.NonExistentProvider", null);
+        ClusterOperatorConfig config = createConfig("com.example.NonExistentProvider", "");
         Map<String, String> providerConfig = new HashMap<>();
         
 
@@ -203,7 +203,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
     @Test
     public void testInvalidPackageNameThrowsException() {
 
-        ClusterOperatorConfig config = createConfig("invalid..package.Provider", null);
+        ClusterOperatorConfig config = createConfig("invalid..package.Provider", "");
         Map<String, String> providerConfig = new HashMap<>();
         
 
@@ -218,7 +218,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
     @Test
     public void testClassWithoutPackageThrowsException() {
 
-        ClusterOperatorConfig config = createConfig("MyProvider", null);
+        ClusterOperatorConfig config = createConfig("MyProvider", "");
         Map<String, String> providerConfig = new HashMap<>();
         
 
@@ -273,7 +273,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.StretchNetworkingProviderPluginLoadingTest$FailingInitProvider", 
-            null
+            ""
         );
         Map<String, String> providerConfig = new HashMap<>();
         
@@ -299,7 +299,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
 
         ClusterOperatorConfig config = createConfig(
             "io.strimzi.operator.cluster.stretch.StretchNetworkingProviderPluginLoadingTest$TestProvider", 
-            null
+            ""
         );
         Map<String, String> providerConfig = new HashMap<>();
         providerConfig.put("test.key", "test.value");
@@ -320,7 +320,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
     @Test
     public void testErrorMessagesAreActionable() {
 
-        ClusterOperatorConfig config = createConfig(null, null);
+        ClusterOperatorConfig config = createConfig(null, "");
         Map<String, String> providerConfig = new HashMap<>();
         
 
@@ -340,7 +340,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
     @Test
     public void testErrorMessageShowsAllProviderTypes() {
 
-        ClusterOperatorConfig config = createConfig(null, null);
+        ClusterOperatorConfig config = createConfig(null, "");
         Map<String, String> providerConfig = new HashMap<>();
         
 
@@ -363,8 +363,8 @@ public class StretchNetworkingProviderPluginLoadingTest {
     @Test
     public void testVeryLongClassNameIsHandled() {
 
-        String longClassName = "com.example." + "VeryLong".repeat(50) + "Provider";
-        ClusterOperatorConfig config = createConfig(longClassName, null);
+        String veryLongClassName = "com.example." + "VeryLong".repeat(50) + "Provider";
+        ClusterOperatorConfig config = createConfig(veryLongClassName, "");
         Map<String, String> providerConfig = new HashMap<>();
         
 
@@ -380,7 +380,7 @@ public class StretchNetworkingProviderPluginLoadingTest {
     @Test
     public void testSpecialCharactersInClassNameAreHandled() {
 
-        ClusterOperatorConfig config = createConfig("com.example.Provider$Inner", null);
+        ClusterOperatorConfig config = createConfig("com.example.Provider$Inner", "");
         Map<String, String> providerConfig = new HashMap<>();
         
 
@@ -406,7 +406,8 @@ public class StretchNetworkingProviderPluginLoadingTest {
             .with("STRIMZI_CENTRAL_CLUSTER_ID", CENTRAL_CLUSTER_ID)
             .with("STRIMZI_REMOTE_KUBE_CONFIG", 
                 REMOTE_CLUSTER_A_ID + ".url=https://api.cluster-a.example.com:6443\n" +
-                REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig");
+                REMOTE_CLUSTER_A_ID + ".secret=cluster-a-kubeconfig")
+            .with("STRIMZI_STRETCH_NETWORK_PROVIDER", "custom"); // Required - no defaults
         
         if (className != null && !className.trim().isEmpty()) {
             builder.with("STRIMZI_STRETCH_PLUGIN_CLASS_NAME", className);

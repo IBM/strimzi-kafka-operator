@@ -264,14 +264,14 @@ public class StretchClusterConfig {
     public static void validateConfiguration(Map<String, String> map) {
         boolean hasRemoteConfig = map.containsKey(STRIMZI_REMOTE_KUBE_CONFIG);
         boolean hasCentralId = map.containsKey(STRIMZI_CENTRAL_CLUSTER_ID);
+        boolean hasNetworkProvider = map.containsKey(STRIMZI_STRETCH_NETWORK_PROVIDER);
         boolean hasPluginClassName = map.containsKey(STRIMZI_STRETCH_PLUGIN_CLASS_NAME);
         boolean hasPluginClassPath = map.containsKey(STRIMZI_STRETCH_PLUGIN_CLASS_PATH);
 
         String requiredVariables = STRIMZI_REMOTE_KUBE_CONFIG + ", " + STRIMZI_CENTRAL_CLUSTER_ID + ", " + STRIMZI_STRETCH_NETWORK_PROVIDER + ", " + STRIMZI_STRETCH_PLUGIN_CLASS_NAME + ", " + STRIMZI_STRETCH_PLUGIN_CLASS_PATH;
 
-        // Only STRIMZI_REMOTE_KUBE_CONFIG and STRIMZI_CENTRAL_CLUSTER_ID are required
-        // STRIMZI_STRETCH_NETWORK_PROVIDER is optional and defaults to "mcs"
-        if (hasRemoteConfig || hasCentralId) {
+        // All variables are required for stretch clusters
+        if (hasRemoteConfig || hasCentralId || hasNetworkProvider) {
             if (!hasRemoteConfig) {
                 throw new InvalidConfigurationException(
                     "STRIMZI_REMOTE_KUBE_CONFIG must be set when configuring stretch clusters. " +
@@ -281,6 +281,13 @@ public class StretchClusterConfig {
             if (!hasCentralId) {
                 throw new InvalidConfigurationException(
                     "STRIMZI_CENTRAL_CLUSTER_ID must be set when configuring stretch clusters. " +
+                    "Required variables: " + requiredVariables
+                );
+            }
+
+            if (!hasNetworkProvider) {
+                throw new InvalidConfigurationException(
+                    "STRIMZI_STRETCH_NETWORK_PROVIDER must be set when configuring stretch clusters. " +
                     "Required variables: " + requiredVariables
                 );
             }
