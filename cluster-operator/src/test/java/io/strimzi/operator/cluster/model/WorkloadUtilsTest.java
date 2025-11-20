@@ -623,7 +623,7 @@ public class WorkloadUtilsTest {
                 .withStrimziPodName(NAME + "-0")
                 .withAdditionalLabels(Map.of("default-label", "default-value", "label-3", "value-3", "label-4", "value-4"))
                 .toMap()));
-        assertThat(pod.getMetadata().getAnnotations(), is(Map.of("extra", "annotations", "anno-1", "value-1", "anno-2", "value-2", PodRevision.STRIMZI_REVISION_ANNOTATION, "6458a317")));
+        assertThat(pod.getMetadata().getAnnotations(), is(Map.of("extra", "annotations", "anno-1", "value-1", "anno-2", "value-2", PodRevision.STRIMZI_REVISION_ANNOTATION, "070283ab")));
 
         assertThat(pod.getSpec().getRestartPolicy(), is("Always"));
         assertThat(pod.getSpec().getHostname(), is(NAME + "-0"));
