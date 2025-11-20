@@ -98,7 +98,7 @@ public class CruiseControlReconcilerTest {
     private static final Storage STORAGE = new JbodStorageBuilder().withVolumes(new PersistentClaimStorageBuilder().withId(0).withSize("100Gi").build()).build();
     private static final KafkaVersion.Lookup VERSIONS = KafkaVersionTestUtils.getKafkaVersionLookup();
     private final static Set<NodeRef> NODES = Set.of(
-            new NodeRef("my-cluster-kafka-0", 0, "kafka", null, false, true),
+            new NodeRef(NAME + "-mixed-0", 0, "mixed", true, true),
             new NodeRef(NAME + "-mixed-1", 1, "mixed", true, true),
             new NodeRef(NAME + "-mixed-2", 2, "mixed", true, true));
     private static final String USER_MANAGED_API_SECRET_NAME = "cc-api-user-secret";

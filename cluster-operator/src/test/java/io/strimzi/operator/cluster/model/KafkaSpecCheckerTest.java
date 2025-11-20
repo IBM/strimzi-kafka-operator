@@ -98,7 +98,7 @@ public class KafkaSpecCheckerTest {
 
     private KafkaSpecChecker generateChecker(Kafka kafka, List<KafkaNodePool> kafkaNodePools, KafkaVersionChange versionChange) {
         List<KafkaPool> pools = NodePoolUtils.createKafkaPools(Reconciliation.DUMMY_RECONCILIATION, kafka, kafkaNodePools, Map.of(), versionChange, SHARED_ENV_PROVIDER);
-        KafkaCluster kafkaCluster = KafkaCluster.fromCrd(Reconciliation.DUMMY_RECONCILIATION, kafka, pools, VERSIONS, KafkaVersionTestUtils.DEFAULT_KRAFT_VERSION_CHANGE, null, SHARED_ENV_PROVIDER);
+        KafkaCluster kafkaCluster = KafkaCluster.fromCrd(Reconciliation.DUMMY_RECONCILIATION, kafka, pools, VERSIONS, versionChange, null, SHARED_ENV_PROVIDER);
         return new KafkaSpecChecker(kafka.getSpec(), VERSIONS, kafkaCluster);
     }
 
