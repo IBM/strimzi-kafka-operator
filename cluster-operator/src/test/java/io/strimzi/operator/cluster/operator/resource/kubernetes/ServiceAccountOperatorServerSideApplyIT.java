@@ -79,5 +79,12 @@ public class ServiceAccountOperatorServerSideApplyIT extends AbstractNamespacedR
         context.verify(() -> assertThat(actual.getMetadata().getNamespace(), is(expected.getMetadata().getNamespace())));
         context.verify(() -> assertThat(actual.getMetadata().getLabels(), is(expected.getMetadata().getLabels())));
         context.verify(() -> assertThat(actual.getAutomountServiceAccountToken(), is(expected.getAutomountServiceAccountToken())));
+        
+        // Verify expected annotations are present (allow platform-injected annotations like OpenShift's internal-registry-pull-secret-ref)
+        if (expected.getMetadata().getAnnotations() != null) {
+            expected.getMetadata().getAnnotations().forEach((key, value) -> 
+                context.verify(() -> assertThat(actual.getMetadata().getAnnotations().get(key), is(value)))
+            );
+        }
     }
 }

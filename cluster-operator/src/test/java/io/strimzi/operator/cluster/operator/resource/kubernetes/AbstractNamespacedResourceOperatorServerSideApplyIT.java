@@ -41,6 +41,22 @@ public abstract class AbstractNamespacedResourceOperatorServerSideApplyIT<C exte
     abstract T getNonConflicting();
     abstract T getConflicting();
 
+    /**
+     * Verify that all expected annotations are present with correct values.
+     * Allows additional platform-injected annotations (e.g., OpenShift's internal-registry-pull-secret-ref).
+     *
+     * @param expected Resource with expected annotations
+     * @param actual   Actual resource from cluster
+     */
+    protected void assertAnnotationsContain(T expected, T actual) {
+        if (expected.getMetadata().getAnnotations() != null) {
+            expected.getMetadata().getAnnotations().forEach((key, value) ->
+                assertThat("Expected annotation " + key + " not found or has wrong value",
+                    actual.getMetadata().getAnnotations().get(key), is(value))
+            );
+        }
+    }
+
     @Test
     public void testCreateModifyDelete(VertxTestContext context)    {
         Checkpoint async = context.checkpoint();
@@ -62,7 +78,7 @@ public abstract class AbstractNamespacedResourceOperatorServerSideApplyIT<C exte
 
                 T currentResource = op.get(namespace, resourceName);
 
-                assertThat(currentResource.getMetadata().getAnnotations(), is(nonConfResource.getMetadata().getAnnotations()));
+                assertAnnotationsContain(nonConfResource, currentResource);
             })
             .compose(rr -> op.reconcile(Reconciliation.DUMMY_RECONCILIATION, namespace, resourceName, modResource))
             .onComplete(context.succeeding(rrModified -> {
@@ -70,7 +86,7 @@ public abstract class AbstractNamespacedResourceOperatorServerSideApplyIT<C exte
 
                 assertThat(rrModified.getType(), is(ReconcileResult.Type.PATCHED_WITH_SERVER_SIDE_APPLY));
                 context.verify(() -> assertThat(modified, is(notNullValue())));
-                assertThat(modified.getMetadata().getAnnotations(), is(nonConfResource.getMetadata().getAnnotations()));
+                assertAnnotationsContain(nonConfResource, modified);
                 assertResources(context, modResource, modified);
             }))
             .compose(rr -> op.reconcile(Reconciliation.DUMMY_RECONCILIATION, namespace, resourceName, null))
