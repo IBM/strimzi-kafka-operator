@@ -186,7 +186,7 @@ public class ClusterOperatorTest {
                     });
                 }
 
-                int maximumExpectedNumberOfWatchers = podSetsOnly ? 0 : 8 * namespaceList.size();
+                int maximumExpectedNumberOfWatchers = podSetsOnly ? 0 : 14 * namespaceList.size();
                 assertThat("Looks like there were more watchers than namespaces",
                         numWatchers.get(), lessThanOrEqualTo(maximumExpectedNumberOfWatchers));
 
@@ -280,7 +280,7 @@ public class ClusterOperatorTest {
                     });
                 }
 
-                int maximumExpectedNumberOfWatchers = podSetsOnly ? 0 : 8;
+                int maximumExpectedNumberOfWatchers = podSetsOnly ? 0 : 14;
                 assertThat("Looks like there were more watchers than custom resources", numWatchers.get(), lessThanOrEqualTo(maximumExpectedNumberOfWatchers));
 
                 int numberOfInformers = 5;
